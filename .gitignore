@@ -1,0 +1,39 @@
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Java / Maven
+**/target/
+*.class
+*.log
+
+# WeChat mini program
+**/node_modules/
+**/miniprogram_npm/
+**/project.private.config.json
+
+# Local and production secrets
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-prod-secret.yml
+*.key
+*.pem
+*.p12
+*.jks
+cert/
+secrets/
+
+# Runtime data
+logs/
+backup/
+data/
+
+# Editors and OS
+.vscode/
+.DS_Store
+Thumbs.db
+
