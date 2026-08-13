@@ -314,3 +314,39 @@ git push
 5. 添加第一版 Flyway 数据库迁移。
 6. 重新运行 Maven 测试。
 7. 再创建微信小程序 TypeScript 工程。
+
+## 11. GitHub 初始化执行结果
+
+2026-08-13 已完成 Git 初始化并推送到 GitHub。
+
+远程仓库：
+
+```text
+git@github.com:Telencephalon/MyTallyBook_Project.git
+```
+
+默认分支及跟踪关系：
+
+```text
+main → origin/main
+```
+
+首个提交：
+
+```text
+f568103 chore: initialize MyTallyBook project structure
+```
+
+已核对本地和远端完整提交哈希一致：
+
+```text
+f5681035206ad547b9fde0112e95f9d3dbce0607
+```
+
+推送后的工作区状态：
+
+```text
+## main...origin/main
+```
+
+没有未提交文件，根目录之外也没有嵌套 Git 仓库。
