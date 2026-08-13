@@ -215,7 +215,7 @@ Java 21.0.11
 - 测试代码编译成功。
 - Spring Boot 能找到修正后的启动类。
 
-### 7.2 当前测试状态
+### 7.2 初始测试失败与处理结果
 
 执行：
 
@@ -223,19 +223,32 @@ Java 21.0.11
 .\mvnw.cmd test
 ```
 
-当前 `contextLoads` 测试在加载数据库自动配置时失败，错误核心是：
+初次执行时，`contextLoads` 测试在加载数据库自动配置时失败，错误核心是：
 
 ```text
 Failed to configure a DataSource: 'url' attribute is not specified
 ```
 
-原因是本地 MySQL 开发库和 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 尚未配置。这是下一阶段的前置工作，不是包名、目录结构或 Java 编译错误。
+原因是本地 MySQL 开发库和 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` 尚未配置。这不是包名、目录结构或 Java 编译错误。
 
-处理原则：
+已创建独立 `test` Profile，仅为当前不依赖数据库的应用骨架测试排除 DataSource、JPA 和 Flyway 自动配置。修复后执行：
+
+```powershell
+.\mvnw.cmd clean install
+```
+
+实际结果：
+
+```text
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+处理原则仍然是：
 
 - 不删除 JPA、Flyway 或 MySQL 依赖来规避错误。
 - 不在 Git 中硬编码数据库密码。
-- 下一阶段创建 `account_book_dev` 与 `account_book_test` 后重新运行测试。
+- 下一阶段创建 `account_book_dev` 与 `account_book_test` 后增加真实数据库集成测试。
 
 在数据库准备完成前，可使用跳过测试的打包命令验证编译和 JAR 生成：
 
@@ -301,7 +314,8 @@ git push
 - [x] 远端初始状态已检查。
 - [ ] Windows 全局 `JAVA_HOME` 永久切换为 JDK 21。
 - [ ] 本地 MySQL 开发库和测试库创建完成。
-- [ ] 配置数据库环境变量后，`mvnw.cmd test` 全部通过。
+- [x] 基础 `mvnw.cmd clean install` 已通过。
+- [ ] 配置测试数据库后，数据库集成测试通过。
 
 ## 10. 下一步
 

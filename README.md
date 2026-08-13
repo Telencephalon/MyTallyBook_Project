@@ -37,8 +37,8 @@ Set-Location -LiteralPath ".\account-book-server"
 - [项目启动与第一阶段实施步骤](docs/01-项目启动与第一阶段实施步骤.md)
 - [IDEA 创建 Spring Boot 后端工程步骤](docs/02-IntelliJ-IDEA创建SpringBoot后端工程步骤.md)
 - [项目初始化记录](docs/03-项目目录与Git初始化记录.md)
+- [Maven install 测试失败排查与修复](docs/04-Maven-install测试失败排查与修复.md)
 
 ## 安全要求
 
 AppSecret、数据库密码、登录令牌、SSL 私钥和生产环境配置不得提交到 Git。
-
