@@ -409,4 +409,3 @@ mysql --protocol=socket
 - [MySQL 8.4 启动故障排查](https://dev.mysql.com/doc/refman/8.4/en/starting-server.html)
 - [MySQL 8.4 服务器日志](https://dev.mysql.com/doc/refman/8.4/en/server-logs.html)
 - [MySQL lower_case_table_names 限制](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html)
-
