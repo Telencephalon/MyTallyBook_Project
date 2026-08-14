@@ -38,6 +38,7 @@ Set-Location -LiteralPath ".\account-book-server"
 - [IDEA 创建 Spring Boot 后端工程步骤](docs/02-IntelliJ-IDEA创建SpringBoot后端工程步骤.md)
 - [项目初始化记录](docs/03-项目目录与Git初始化记录.md)
 - [Maven install 测试失败排查与修复](docs/04-Maven-install测试失败排查与修复.md)
+- [京东云 MySQL 8 参数配置执行手册](docs/05-京东云MySQL8参数配置执行手册.md)
 
 ## 安全要求
 
