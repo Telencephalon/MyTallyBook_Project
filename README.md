@@ -40,6 +40,7 @@ Set-Location -LiteralPath ".\account-book-server"
 - [Maven install 测试失败排查与修复](docs/04-Maven-install测试失败排查与修复.md)
 - [京东云 MySQL 8 参数配置执行手册](docs/05-京东云MySQL8参数配置执行手册.md)
 - [Ubuntu 卸载并重新安装 MySQL 8.4 LTS 执行手册](docs/06-Ubuntu卸载重装MySQL8执行手册.md)
+- [MySQL 8.4 启动失败诊断与恢复](docs/07-MySQL8启动失败诊断与恢复.md)
 
 ## 安全要求
 

@@ -694,6 +694,8 @@ apt-get install -y mysql-server
 
 ### 20.2 MySQL 启动失败
 
+如果出现 `mysqld` 返回 `status=1/FAILURE`，按照专项文档执行只读诊断和分支恢复：[MySQL 8.4 启动失败诊断与恢复](07-MySQL8启动失败诊断与恢复.md)。
+
 ```bash
 systemctl status "${MYSQL_SERVICE}" --no-pager
 journalctl -u "${MYSQL_SERVICE}" -n 200 --no-pager
