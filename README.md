@@ -41,6 +41,7 @@ Set-Location -LiteralPath ".\account-book-server"
 - [京东云 MySQL 8 参数配置执行手册](docs/05-京东云MySQL8参数配置执行手册.md)
 - [Ubuntu 卸载并重新安装 MySQL 8.4 LTS 执行手册](docs/06-Ubuntu卸载重装MySQL8执行手册.md)
 - [MySQL 8.4 启动失败诊断与恢复](docs/07-MySQL8启动失败诊断与恢复.md)
+- [Ubuntu 完全卸载 MySQL 及备份](docs/08-Ubuntu完全卸载MySQL及备份.md)
 
 ## 安全要求
 
