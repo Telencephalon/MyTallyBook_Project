@@ -8,7 +8,8 @@
 - 已有域名，域名 ICP 备案尚未完成。
 - 京东云 Ubuntu 22.04.3 LTS 和 MySQL 8 已可用。
 - Spring Boot 工程骨架已存在，业务功能尚未开发。
-- 微信小程序工程、Nginx、HTTPS 和 systemd 尚未配置。
+- 微信原生 TypeScript 小程序骨架已创建，Node.js 24 LTS 和类型检查已配置。
+- Nginx、HTTPS 和 systemd 尚未配置。
 
 ## 技术架构
 
@@ -24,7 +25,7 @@
 ```text
 MyTallyBook_Project/
 ├── account-book-server/      # Spring Boot 后端
-├── account-book-miniapp/     # 待用微信开发者工具创建
+├── account-book-miniapp/     # 微信原生 TypeScript 小程序
 ├── deploy/
 │   ├── mysql/                # MySQL 管理员初始化脚本
 │   ├── nginx/                # Nginx 配置
@@ -45,6 +46,7 @@ Set-Location -LiteralPath ".\account-book-server"
 当前唯一设计基线：
 
 - [微信共享记账小程序完整开发设计方案（V2.0）](docs/03-微信共享记账小程序完整开发设计方案.md)
+- [项目版本基线与本地环境升级方案](docs/04-项目版本基线与本地环境升级方案.md)
 
 以下为历史阶段记录，不再作为当前执行入口：
 
