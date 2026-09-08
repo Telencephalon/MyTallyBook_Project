@@ -5,3 +5,10 @@ spring:
       - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
       - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
 
+app:
+  wechat:
+    app-id: test-app-id
+    app-secret: test-app-secret-never-use-in-production
+  auth:
+    bootstrap-key: test-bootstrap-key-1234567890
+    token-pepper: test-token-pepper-0123456789abcdef0123456789

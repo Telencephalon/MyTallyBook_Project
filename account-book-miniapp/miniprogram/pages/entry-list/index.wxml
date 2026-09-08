@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="card filters">
+    <picker mode="date" value="{{dateFrom}}" bindchange="onDateFrom"><view>开始日期：{{dateFrom || '不限'}}</view></picker>
+    <picker mode="date" value="{{dateTo}}" bindchange="onDateTo"><view>结束日期：{{dateTo || '不限'}}</view></picker>
+    <picker range="{{['全部类型','支出','收入']}}" bindchange="onType"><view>类型：{{entryType || '全部'}}</view></picker>
+    <picker range="{{categories}}" range-key="displayName" bindchange="onCategory"><view>分类：{{categoryName || '全部'}}</view></picker>
+    <picker range="{{accounts}}" range-key="displayName" bindchange="onAccount"><view>账户：{{accountName || '全部'}}</view></picker>
+    <picker range="{{creators}}" range-key="displayName" bindchange="onCreator"><view>创建人：{{createdBy || '全部'}}</view></picker>
+    <input placeholder="按备注字面搜索" value="{{keyword}}" bindinput="onKeyword"/>
+    <view class="actions"><button bindtap="onClearFilters">清除</button><button bindtap="onApplyFilters">应用</button></view>
+  </view>
+  <button class="button button-primary" disabled="{{loading}}" bindtap="openCreate">新增账单</button>
+  <view class="card" wx:if="{{loadState === 'loading'}}">正在加载账单…</view>
+  <view class="error-panel" wx:elif="{{loadState === 'error'}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text></view>
+  <view class="card" wx:elif="{{loadState === 'empty'}}">暂无符合条件的账单</view>
+  <block wx:else>
+    <view class="card row" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+      <view><text>{{item.entryDate}} · {{item.categoryName}}{{item.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text><text>{{item.creatorName}} · {{item.accountName}}{{item.accountStatus === 'DISABLED' ? '（已停用）' : ''}}</text></view>
+      <text>{{item.entryType === 'INCOME' ? '+' : '-'}}{{item.amount}}</text>
+    </view>
+    <view class="pager"><button disabled="{{page <= 1 || loading}}" bindtap="previousPage">上一页</button><text>{{page}} / 共 {{total}} 条</text><button disabled="{{page * pageSize >= total || loading}}" bindtap="nextPage">下一页</button></view>
+  </block>
+</view>

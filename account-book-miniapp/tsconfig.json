@@ -22,10 +22,13 @@
     ]
   },
   "include": [
-    "./**/*.ts"
+    "./miniprogram/**/*.ts",
+    "./typings/index.d.ts"
   ],
   "exclude": [
     "node_modules",
-    "typings/types"
+    "typings/types",
+    "tests",
+    "vitest.config.mts"
   ]
 }

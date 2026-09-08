@@ -1,5 +1,5 @@
 {
-  "name": "miniprogram-ts-quickstart",
+  "name": "account-book-miniapp",
   "version": "1.0.0",
   "private": true,
   "packageManager": "npm@11.19.0",
@@ -7,10 +7,14 @@
     "node": ">=24.20.0 <25"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "devDependencies": {
+    "@types/node": "24.3.0",
     "miniprogram-api-typings": "5.2.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
   }
 }

@@ -1,4 +1,4 @@
--- MyTallyBook production database bootstrap for MySQL 8.4.
+-- MyTallyBook production database bootstrap for MySQL 8.x.
 -- Run once as a MySQL administrator on the Linux server.
 -- CREATE USER intentionally has no IF NOT EXISTS: rerunning must not silently
 -- replace or lose the generated application password.

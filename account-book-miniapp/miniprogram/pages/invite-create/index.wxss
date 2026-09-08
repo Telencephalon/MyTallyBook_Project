@@ -1,0 +1,18 @@
+.intro { padding: 12rpx 4rpx 28rpx; }
+.eyebrow { display: block; color: #1677ff; font-size: 24rpx; font-weight: 600; }
+.title { display: block; margin: 16rpx 0; font-size: 44rpx; font-weight: 700; }
+.description, .hint, .label, .role { display: block; line-height: 1.7; }
+.description { color: #646a73; font-size: 26rpx; overflow-wrap: anywhere; }
+.label { font-weight: 600; margin-bottom: 12rpx; }
+.hint { color: #86909c; font-size: 24rpx; margin: 14rpx 0; }
+.role { color: #1677ff; font-size: 26rpx; }
+.card { margin: 20rpx 0; }
+.button { margin-top: 18rpx; }
+.field, .token-input { background: #f2f7ff; border: 2rpx solid #d6e8ff; border-radius: 14rpx; padding: 20rpx; box-sizing: border-box; width: 100%; }
+.token-input { height: 200rpx; word-break: break-all; }
+.row, .issued { border-top: 2rpx solid #f0f2f5; padding-top: 24rpx; margin-top: 24rpx; }
+.pagination { display: flex; align-items: center; gap: 16rpx; font-size: 24rpx; white-space: nowrap; }
+.pagination .button { width: auto; flex: 1; font-size: 24rpx; }
+.error-panel { padding: 24rpx; border-radius: 16rpx; background: #fff2f0; margin: 16rpx 0; }
+.error-panel text { display: block; overflow-wrap: anywhere; }
+.footnote { margin: 24rpx 0; }

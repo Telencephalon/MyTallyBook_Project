@@ -1,12 +1,28 @@
 {
   "pages": [
-    "pages/index/index",
-    "pages/logs/logs"
+    "pages/login/index",
+    "pages/bootstrap/index",
+    "pages/home/index",
+    "pages/profile/index",
+    "pages/invite-create/index",
+    "pages/invite-accept/index",
+    "pages/member-list/index",
+    "pages/member-edit/index",
+    "pages/category-list/index",
+    "pages/category-edit/index",
+    "pages/account-list/index",
+    "pages/account-edit/index",
+    "pages/entry-list/index",
+    "pages/entry-create/index",
+    "pages/entry-detail/index",
+    "pages/entry-edit/index",
+    "pages/statistics/index"
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "Weixin",
-    "navigationBarBackgroundColor": "#ffffff"
+    "navigationBarTitleText": "随手账",
+    "navigationBarBackgroundColor": "#f7f8fa",
+    "backgroundColor": "#f7f8fa"
   },
   "style": "v2",
   "componentFramework": "glass-easel",

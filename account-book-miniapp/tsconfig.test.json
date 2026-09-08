@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": [
+      "miniprogram-api-typings",
+      "node"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "./miniprogram/**/*.ts",
+    "./tests/**/*.ts",
+    "./typings/index.d.ts",
+    "./vitest.config.mts"
+  ],
+  "exclude": [
+    "node_modules",
+    "typings/types"
+  ]
+}

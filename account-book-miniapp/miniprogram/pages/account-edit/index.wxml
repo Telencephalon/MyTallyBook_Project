@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="error-panel" wx:if="{{errorMessage}}">
+    {{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
+    <button wx:if="{{canReload}}" disabled="{{loading || busy}}" bindtap="onReload">确认重新加载</button>
+  </view>
+  <view class="card form">
+    <text>名称</text><input value="{{name}}" bindinput="onNameInput" maxlength="40"/>
+    <block wx:if="{{!editing}}">
+      <text>账户类型</text><picker range="{{['CASH','WECHAT','BANK','ALIPAY','OTHER']}}" bindchange="onTypeChange"><view>{{accountType}}</view></picker>
+      <text>初始余额</text><input value="{{initialBalance}}" bindinput="onBalanceInput" type="digit"/>
+    </block>
+    <block wx:else>
+      <text>类型：{{accountType}}（创建后不可修改）</text>
+      <text>初始余额：{{initialBalance}}</text><text>当前余额：{{currentBalance}}</text>
+    </block>
+    <text>排序号</text><input value="{{sortNo}}" bindinput="onSortInput" type="number"/>
+    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
+    <button loading="{{busy}}" disabled="{{!canManage || loading || busy}}" bindtap="onSubmit">保存</button>
+  </view>
+</view>

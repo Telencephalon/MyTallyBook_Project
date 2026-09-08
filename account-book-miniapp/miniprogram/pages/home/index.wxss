@@ -1,0 +1,149 @@
+.home-page {
+  gap: 34rpx;
+}
+
+.hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: 44rpx 38rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #1677ff, #4b9cff);
+  color: #ffffff;
+  box-shadow: 0 18rpx 46rpx rgba(22, 119, 255, 0.2);
+}
+
+.hero-kicker {
+  font-size: 24rpx;
+  opacity: 0.82;
+}
+
+.hero-title {
+  font-size: 46rpx;
+  font-weight: 700;
+}
+
+.hero-subtitle {
+  font-size: 28rpx;
+  opacity: 0.92;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.section-title {
+  color: #344054;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.text-button { width: auto; margin: 0; padding: 0; border: 0; background: transparent; color: #1677ff; font-size: 25rpx; line-height: 48rpx; }
+.text-button::after { border: 0; }
+.summary-grid { display: flex; gap: 18rpx; }
+.summary-item { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 10rpx; }
+.summary-label, .recent-meta, .loading-card { color: #667085; font-size: 24rpx; }
+.summary-value { color: #172033; font-size: 29rpx; font-weight: 700; word-break: break-all; }
+.income { color: #168f55; }
+.expense { color: #d84a3a; }
+.recent-list { display: flex; flex-direction: column; gap: 20rpx; }
+.recent-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid #edf0f5; }
+.recent-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.recent-main { display: flex; min-width: 0; flex-direction: column; gap: 8rpx; }
+.recent-name { color: #172033; font-weight: 600; }
+.recent-amount { flex: none; font-weight: 700; }
+.loading-card { text-align: center; }
+
+.info-grid {
+  display: flex;
+  gap: 18rpx;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  min-width: 0;
+  flex: 1;
+}
+
+.info-label,
+.identity-role {
+  color: #667085;
+  font-size: 24rpx;
+}
+
+.info-value {
+  color: #172033;
+  font-size: 27rpx;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.identity-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.identity-card > view {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.identity-name {
+  color: #172033;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.compact-button {
+  margin: 0;
+  padding: 0 26rpx;
+  border: 0;
+  border-radius: 16rpx;
+  background: #e8f2ff;
+  color: #1677ff;
+  font-size: 26rpx;
+  line-height: 68rpx;
+}
+
+.compact-button::after {
+  border: 0;
+}
+
+.roadmap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  border: 2rpx dashed #b8d5ff;
+  background: #f5f9ff;
+}
+
+.roadmap-title {
+  color: #245ba7;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.roadmap-text {
+  color: #667085;
+  font-size: 25rpx;
+  line-height: 1.7;
+}
+
+.catalog-actions { display: flex; flex-direction: column; gap: 16rpx; }
+
+.error-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 18rpx;
+  background: #fff1f0;
+}

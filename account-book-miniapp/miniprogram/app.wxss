@@ -1,10 +1,75 @@
-/**app.wxss**/
-.container {
-  height: 100%;
+page {
+  min-height: 100%;
+  background: #f7f8fa;
+  color: #1f2329;
+  font-size: 28rpx;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 200rpx 0;
   box-sizing: border-box;
-} 
+}
+
+.card {
+  padding: 32rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 30rpx rgba(31, 35, 41, 0.06);
+  box-sizing: border-box;
+}
+
+.button {
+  width: 100%;
+  min-height: 88rpx;
+  margin: 0;
+  border-radius: 16rpx;
+  font-size: 29rpx;
+  font-weight: 600;
+  line-height: 88rpx;
+  box-sizing: border-box;
+}
+
+.button::after {
+  border: 0;
+}
+
+.button-primary,
+.primary-button {
+  background: #1677ff;
+  color: #ffffff;
+}
+
+.button-secondary,
+.secondary-button {
+  border: 2rpx solid #1677ff;
+  background: #ffffff;
+  color: #1677ff;
+}
+
+.button-danger,
+.danger-button {
+  border: 2rpx solid #ffccc7;
+  background: #ffffff;
+  color: #d4380d;
+}
+
+.error-message,
+.error-text {
+  color: #c41d7f;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.request-id {
+  color: #646a73;
+  font-size: 24rpx;
+  line-height: 1.6;
+  user-select: text;
+}
+
+button[disabled] {
+  opacity: 0.55;
+}

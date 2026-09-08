@@ -1,0 +1,110 @@
+.profile-page {
+  gap: 34rpx;
+}
+
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+  padding: 28rpx 8rpx 12rpx;
+}
+
+.avatar {
+  width: 116rpx;
+  height: 116rpx;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #e8f2ff;
+}
+
+.avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1677ff;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.profile-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.profile-name {
+  color: #172033;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.profile-role {
+  color: #667085;
+  font-size: 26rpx;
+}
+
+.profile-card,
+.field,
+.readonly-item,
+.error-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-card {
+  gap: 34rpx;
+}
+
+.readonly-grid {
+  display: flex;
+  gap: 20rpx;
+}
+
+.readonly-item {
+  min-width: 0;
+  flex: 1;
+  gap: 10rpx;
+  padding: 22rpx;
+  border-radius: 16rpx;
+  background: #f7f9fc;
+}
+
+.readonly-label,
+.field-help {
+  color: #667085;
+  font-size: 24rpx;
+}
+
+.readonly-value {
+  color: #172033;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.field {
+  gap: 14rpx;
+}
+
+.field-label {
+  color: #344054;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.field-input {
+  height: 92rpx;
+  padding: 0 28rpx;
+  border: 2rpx solid #d0d5dd;
+  border-radius: 18rpx;
+  background: #ffffff;
+  color: #172033;
+  font-size: 30rpx;
+  box-sizing: border-box;
+}
+
+.error-panel {
+  gap: 8rpx;
+  padding: 22rpx;
+  border-radius: 16rpx;
+  background: #fff1f0;
+}

@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="intro"><text class="eyebrow">共享账本 · 邀请管理</text><text class="title">邀请新成员</text><text class="description">邀请码只在创建后提供一次。原码丢失时，请撤销旧邀请再创建。失去管理权限时，你未使用且未过期的邀请将撤销。</text></view>
+  <view class="error-panel" wx:if="{{errorMessage}}"><text class="error-message">{{errorMessage}}</text><text class="request-id" wx:if="{{requestId}}">请求编号：{{requestId}}</text></view>
+  <button class="button button-secondary" disabled="{{busy || loading}}" loading="{{loading}}" bindtap="onShow">刷新身份与邀请</button>
+  <block wx:if="{{canManage}}">
+    <view class="card">
+      <text class="label">有效期（小时）</text>
+      <input class="field" type="number" value="{{hours}}" disabled="{{busy || loading}}" bindinput="onHoursInput" />
+      <text class="hint">1～168 小时的整数，默认 24 小时</text>
+      <button class="button button-primary" loading="{{busy}}" disabled="{{busy || loading}}" bindtap="onCreate">创建一次性邀请</button>
+      <view class="issued" wx:if="{{hasInvite}}">
+        <text class="label">邀请已创建</text><text class="description">到期：{{expiresAt}}（UTC）</text>
+        <button class="button button-secondary" disabled="{{busy || loading}}" bindtap="onCopy">复制邀请码</button>
+        <button class="button button-primary" disabled="{{busy || loading}}" open-type="share">分享邀请卡片</button>
+        <text class="hint">离开页面后无法再次获取原码，请主动复制或分享。</text>
+      </view>
+    </view>
+    <view class="card">
+      <text class="label">邀请记录 · {{total}} 条</text>
+      <picker range="{{filters}}" value="{{filterIndex}}" disabled="{{busy || loading}}" bindchange="onFilterChange"><view class="field">筛选：{{filters[filterIndex]}} ▾</view></picker>
+      <text class="description" wx:if="{{!items.length && !loading}}">暂无符合条件的邀请</text>
+      <view class="row" wx:for="{{items}}" wx:key="id">
+        <text class="label">#{{item.id}} · {{item.status === 'ACTIVE' ? '有效' : item.status === 'USED' ? '已使用' : item.status === 'REVOKED' ? '已撤销' : '已过期'}}</text>
+        <text class="description">创建者：{{item.createdByName}}</text>
+        <text class="description">创建：{{item.createdAt}}（UTC）</text>
+        <text class="description">到期：{{item.expiresAt}}（UTC）</text>
+        <button wx:if="{{item.status === 'ACTIVE'}}" class="button button-danger" data-id="{{item.id}}" disabled="{{busy || loading}}" bindtap="onRevoke">撤销此邀请</button>
+      </view>
+      <view class="pagination"><button class="button button-secondary" disabled="{{busy || loading || page <= 1}}" bindtap="previousPage">上一页</button><text>第 {{page}} 页</text><button class="button button-secondary" disabled="{{busy || loading || page * pageSize >= total}}" bindtap="nextPage">下一页</button></view>
+    </view>
+  </block>
+</view>

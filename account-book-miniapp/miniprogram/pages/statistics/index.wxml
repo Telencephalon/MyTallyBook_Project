@@ -1,0 +1,79 @@
+<view class="page statistics-page">
+  <view class="filter-card card">
+    <view class="filter-item">
+      <text class="filter-label">统计月份</text>
+      <picker mode="date" fields="month" start="1000-01" end="9999-12" value="{{month}}" bindchange="onMonthChange">
+        <view class="picker-value">{{month}}</view>
+      </picker>
+    </view>
+    <view class="filter-item">
+      <text class="filter-label">排行方向</text>
+      <picker range="{{directionLabels}}" value="{{directionIndex}}" bindchange="onDirectionChange">
+        <view class="picker-value">{{directionLabels[directionIndex]}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="error-panel" wx:if="{{loadState === 'error'}}">
+    <text class="error-message">{{errorMessage}}</text>
+    <text class="request-id" wx:if="{{requestId}}" user-select="true">请求编号：{{requestId}}</text>
+    <button class="button button-secondary" loading="{{loading}}" disabled="{{loading}}" bindtap="retry">重新加载</button>
+  </view>
+  <view class="state-card card" wx:elif="{{loading && !summary}}"><text>正在加载统计…</text></view>
+  <view class="state-card card" wx:elif="{{loadState === 'empty'}}"><text>这个月还没有账单</text></view>
+
+  <block wx:if="{{summary}}">
+    <view class="section">
+      <text class="section-title">月度汇总</text>
+      <view class="summary-grid card">
+        <view class="summary-item income"><text class="summary-label">收入</text><text class="summary-value">¥{{summary.income}}</text></view>
+        <view class="summary-item expense"><text class="summary-label">支出</text><text class="summary-value">¥{{summary.expense}}</text></view>
+        <view class="summary-item"><text class="summary-label">结余</text><text class="summary-value">¥{{summary.net}}</text></view>
+      </view>
+      <text class="entry-count">共 {{summary.entryCount}} 笔</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">每日趋势</text>
+      <view class="card list-card">
+        <view class="daily-row" wx:for="{{daily}}" wx:key="date">
+          <text class="row-name">{{item.date}}</text>
+          <view class="daily-money"><text class="income">+{{item.income}}</text><text class="expense">-{{item.expense}}</text><text>净 {{item.net}}</text></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">分类排行 · 合计 ¥{{categoryTotal}}</text>
+      <view class="card list-card">
+        <view class="ranking-row" wx:for="{{categoryItems}}" wx:key="id">
+          <view class="row-line"><text class="row-name">{{item.name}}</text><text>¥{{item.amount}} · {{item.percentage}}%</text></view>
+          <view class="bar-track"><view class="bar-fill" style="width: {{item.width}}%;"></view></view>
+        </view>
+        <text class="empty-text" wx:if="{{!categoryItems.length}}">暂无排行数据</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">账户收支</text>
+      <view class="card list-card">
+        <view class="account-row" wx:for="{{accountItems}}" wx:key="id">
+          <view class="row-line"><text class="row-name">{{item.name}}</text><text>净 ¥{{item.net}}</text></view>
+          <text class="row-detail">收入 {{item.income}} · 支出 {{item.expense}} · {{item.entryCount}} 笔</text>
+        </view>
+        <text class="empty-text" wx:if="{{!accountItems.length}}">暂无账户流水</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">成员排行 · 合计 ¥{{memberTotal}}</text>
+      <view class="card list-card">
+        <view class="ranking-row" wx:for="{{memberItems}}" wx:key="id">
+          <view class="row-line"><text class="row-name">{{item.name}}</text><text>¥{{item.amount}} · {{item.percentage}}%</text></view>
+          <view class="bar-track"><view class="bar-fill member-bar" style="width: {{item.width}}%;"></view></view>
+        </view>
+        <text class="empty-text" wx:if="{{!memberItems.length}}">暂无成员数据</text>
+      </view>
+    </view>
+  </block>
+</view>

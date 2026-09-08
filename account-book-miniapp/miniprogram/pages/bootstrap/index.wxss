@@ -1,0 +1,86 @@
+.bootstrap-page {
+  gap: 32rpx;
+}
+
+.page-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 16rpx 4rpx 8rpx;
+}
+
+.eyebrow {
+  color: #1677ff;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+
+.page-title {
+  color: #172033;
+  font-size: 42rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.page-description {
+  color: #667085;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.form-card,
+.field,
+.error-panel,
+.notice-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-card {
+  gap: 28rpx;
+}
+
+.field {
+  gap: 14rpx;
+}
+
+.field-label,
+.notice-title {
+  color: #344054;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.field-input {
+  height: 92rpx;
+  padding: 0 28rpx;
+  border: 2rpx solid #d0d5dd;
+  border-radius: 18rpx;
+  background: #ffffff;
+  color: #172033;
+  font-size: 30rpx;
+  box-sizing: border-box;
+}
+
+.field-help,
+.notice-text {
+  color: #667085;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.error-panel {
+  gap: 8rpx;
+  padding: 22rpx;
+  border-radius: 16rpx;
+  background: #fff1f0;
+}
+
+.notice-card {
+  gap: 12rpx;
+  padding: 28rpx;
+  border: 2rpx solid #d8e8ff;
+  border-radius: 20rpx;
+  background: #f5f9ff;
+}

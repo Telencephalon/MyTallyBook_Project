@@ -1,0 +1,11 @@
+<view class="page">
+  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}</view>
+  <view class="card detail" wx:if="{{entry}}">
+    <text>{{entry.entryType === 'INCOME' ? '收入' : '支出'}} {{entry.amount}}</text>
+    <text>日期：{{entry.entryDate}}</text><text>分类：{{entry.categoryName}}{{entry.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text>
+    <text>账户：{{entry.accountName}}{{entry.accountStatus === 'DISABLED' ? '（已停用）' : ''}}</text>
+    <text>创建人：{{entry.creatorName}}</text><text>备注：{{entry.note || '无'}}</text>
+    <button wx:if="{{canEdit}}" disabled="{{busy}}" bindtap="openEdit">编辑</button>
+    <button wx:if="{{canDelete}}" class="button button-danger" loading="{{busy}}" disabled="{{busy}}" bindtap="onDelete">删除</button>
+  </view>
+</view>

@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="error-panel" wx:if="{{errorMessage}}">
+    {{errorMessage}}
+    <button wx:if="{{canReload}}" disabled="{{loading || busy}}" bindtap="onReload">确认重新加载</button>
+  </view>
+  <view class="card form">
+    <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput"/>
+    <text>收支类型{{editing ? '（不可修改）' : ''}}</text>
+    <picker disabled="{{editing}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
+    <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput"/>
+    <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput"/>
+    <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput"/>
+    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
+    <button loading="{{busy}}" disabled="{{!canManage || loading || busy}}" bindtap="onSubmit">保存</button>
+  </view>
+</view>

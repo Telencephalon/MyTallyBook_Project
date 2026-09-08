@@ -32,6 +32,9 @@ logs/
 backup/
 data/
 
+# Python operational scripts
+**/__pycache__/
+
 # Editors and OS
 .vscode/
 .DS_Store

@@ -1,0 +1,37 @@
+<view class="page login-page">
+  <view class="brand-block">
+    <view class="brand-mark">账</view>
+    <text class="brand-title">随手账</text>
+    <text class="brand-subtitle">10 人以内的固定共享账本</text>
+  </view>
+
+  <view class="card status-card" wx:if="{{viewState === 'RESTORING'}}">
+    <view class="spinner"></view>
+    <text class="status-title">正在恢复登录状态</text>
+    <text class="status-description">请稍候，我们正在安全加载你的账本。</text>
+  </view>
+
+  <view class="card status-card" wx:elif="{{viewState === 'LOGGING_IN'}}">
+    <view class="spinner"></view>
+    <text class="status-title">正在微信登录</text>
+    <text class="status-description">登录完成后将自动进入共享账本。</text>
+  </view>
+
+  <view class="card status-card" wx:elif="{{viewState === 'INVITE_REQUIRED'}}">
+    <view class="status-icon">候</view>
+    <text class="status-title">等待加入账本</text>
+    <text class="status-description">当前微信用户还不是固定共享账本成员，请联系所有者或管理员邀请你加入。</text>
+    <button class="button button-primary" disabled="{{busy}}" bindtap="openInvite">已有邀请码，去加入</button>
+    <button class="button button-secondary" loading="{{busy}}" disabled="{{busy}}" bindtap="retry">重新检查</button>
+  </view>
+
+  <view class="card status-card" wx:elif="{{viewState === 'ERROR'}}">
+    <view class="status-icon status-icon-error">!</view>
+    <text class="status-title">暂时无法进入账本</text>
+    <text class="error-message">{{errorMessage}}</text>
+    <text class="request-id" wx:if="{{requestId}}" user-select="true">请求编号：{{requestId}}</text>
+    <button class="button button-primary" loading="{{busy}}" disabled="{{busy}}" bindtap="retry">重试</button>
+  </view>
+
+  <text class="security-note">微信身份仅用于识别账本成员</text>
+</view>

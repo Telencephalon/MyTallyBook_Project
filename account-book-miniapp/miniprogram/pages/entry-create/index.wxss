@@ -1,0 +1,1 @@
+.form{display:flex;flex-direction:column;gap:18rpx}.form picker,.form input,.form textarea{padding:18rpx;background:#f7f8fa;border-radius:12rpx}.error-panel{margin-bottom:20rpx}

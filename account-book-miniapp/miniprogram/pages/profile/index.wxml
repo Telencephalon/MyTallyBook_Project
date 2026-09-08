@@ -1,0 +1,43 @@
+<view class="page profile-page">
+  <view class="profile-heading">
+    <image wx:if="{{avatarUrl}}" class="avatar" src="{{avatarUrl}}" mode="aspectFill" />
+    <view wx:else class="avatar avatar-fallback">账</view>
+    <view class="profile-identity">
+      <text class="profile-name">{{displayName || '账本成员'}}</text>
+      <text class="profile-role">{{memberRoleLabel}}</text>
+    </view>
+  </view>
+
+  <view class="card profile-card">
+    <view class="readonly-grid">
+      <view class="readonly-item">
+        <text class="readonly-label">成员显示名</text>
+        <text class="readonly-value">{{displayName || '-'}}</text>
+      </view>
+      <view class="readonly-item">
+        <text class="readonly-label">账本角色</text>
+        <text class="readonly-value">{{memberRoleLabel || '-'}}</text>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="field-label">昵称</text>
+      <input
+        class="field-input"
+        type="nickname"
+        maxlength="64"
+        value="{{nickname}}"
+        placeholder="请输入昵称"
+        bindinput="onNicknameInput"
+      />
+      <text class="field-help">昵称长度为 1～64 个字符；本阶段不修改头像。</text>
+    </view>
+
+    <view class="error-panel" wx:if="{{errorMessage}}">
+      <text class="error-message">{{errorMessage}}</text>
+      <text class="request-id" wx:if="{{requestId}}" user-select="true">请求编号：{{requestId}}</text>
+    </view>
+
+    <button class="button button-primary" loading="{{saving}}" disabled="{{saving || loading}}" bindtap="save">保存昵称</button>
+  </view>
+</view>

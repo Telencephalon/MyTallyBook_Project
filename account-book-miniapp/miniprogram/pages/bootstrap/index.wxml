@@ -1,0 +1,35 @@
+<view class="page bootstrap-page">
+  <view class="page-heading">
+    <text class="eyebrow">首次初始化</text>
+    <text class="page-title">创建固定共享账本所有者</text>
+    <text class="page-description">仅第一个输入正确一次性口令并完成微信登录的用户会成为所有者，成功后口令立即失效。</text>
+  </view>
+
+  <view class="card form-card">
+    <view class="field">
+      <text class="field-label">一次性初始化口令</text>
+      <input
+        class="field-input"
+        password
+        maxlength="256"
+        value="{{bootstrapKey}}"
+        placeholder="请输入服务器部署时配置的口令"
+        bindinput="onBootstrapKeyInput"
+      />
+      <text class="field-help">口令长度为 20～256 个字符，不会保存在本机。</text>
+    </view>
+
+    <view class="error-panel" wx:if="{{errorMessage}}">
+      <text class="error-message">{{errorMessage}}</text>
+      <text class="request-id" wx:if="{{requestId}}" user-select="true">请求编号：{{requestId}}</text>
+    </view>
+
+    <button class="button button-primary" loading="{{busy}}" disabled="{{busy}}" bindtap="submit">确认并成为所有者</button>
+    <button class="button button-secondary" disabled="{{busy}}" bindtap="backToLogin">返回登录</button>
+  </view>
+
+  <view class="notice-card">
+    <text class="notice-title">安全提示</text>
+    <text class="notice-text">请勿截图、转发或在聊天中发送初始化口令。若系统已经初始化，将返回登录页重新判断成员身份。</text>
+  </view>
+</view>

@@ -1,0 +1,1 @@
+.form{display:flex;flex-direction:column;gap:18rpx}.form input,.form picker{padding:18rpx;border:1rpx solid #d0d5dd;border-radius:12rpx}
