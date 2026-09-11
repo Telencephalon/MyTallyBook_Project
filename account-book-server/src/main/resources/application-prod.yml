@@ -1,7 +1,18 @@
 server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:7631}
   forward-headers-strategy: framework
   shutdown: graceful
 
 spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

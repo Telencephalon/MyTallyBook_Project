@@ -44,4 +44,12 @@ class ProductionConfigurationTests {
                 environment.getProperty("spring.datasource.password")
         );
     }
+
+    @Test
+    void productionRuntimeStopsGracefullyAndOnlyExposesHealthThroughActuator() {
+        assertEquals("graceful", environment.getProperty("server.shutdown"));
+        assertEquals("30s", environment.getProperty("spring.lifecycle.timeout-per-shutdown-phase"));
+        assertEquals("health", environment.getProperty("management.endpoints.web.exposure.include"));
+        assertEquals("never", environment.getProperty("management.endpoint.health.show-details"));
+    }
 }

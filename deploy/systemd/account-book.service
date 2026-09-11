@@ -1,0 +1,56 @@
+[Unit]
+Description=MyTallyBook Spring Boot backend
+After=network-online.target mysql.service
+Wants=network-online.target
+StartLimitIntervalSec=300s
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=accountbook
+Group=accountbook
+WorkingDirectory=/opt/account-book
+EnvironmentFile=/etc/account-book/account-book.env
+Environment=SPRING_PROFILES_ACTIVE=prod
+Environment=SERVER_ADDRESS=127.0.0.1
+Environment=SERVER_PORT=7631
+ExecStartPre=/usr/bin/test -L /opt/account-book/current.jar
+ExecStartPre=/usr/bin/test -r /opt/account-book/current.jar
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -XX:+UseG1GC -jar /opt/account-book/current.jar
+
+SuccessExitStatus=143 SIGTERM
+KillSignal=SIGTERM
+TimeoutStartSec=90s
+TimeoutStopSec=40s
+Restart=on-failure
+RestartSec=10s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=account-book
+
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+TasksMax=256
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target
