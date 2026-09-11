@@ -1,16 +1,18 @@
 <view class="page">
   <view class="error-panel" wx:if="{{errorMessage}}">
     {{errorMessage}}
+    <text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
+    <button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button>
     <button wx:if="{{canReload}}" disabled="{{loading || busy}}" bindtap="onReload">确认重新加载</button>
   </view>
   <view class="card form">
-    <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput"/>
+    <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput" disabled="{{loading || busy}}"/>
     <text>收支类型{{editing ? '（不可修改）' : ''}}</text>
-    <picker disabled="{{editing}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
-    <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput"/>
-    <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput"/>
-    <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput"/>
-    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
-    <button loading="{{busy}}" disabled="{{!canManage || loading || busy}}" bindtap="onSubmit">保存</button>
+    <picker disabled="{{editing || loading || busy}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
+    <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput" disabled="{{loading || busy}}"/>
+    <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput" disabled="{{loading || busy}}"/>
+    <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput" disabled="{{loading || busy}}"/>
+    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" disabled="{{loading || busy}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
+    <button loading="{{busy}}" disabled="{{!canManage || loading || busy || canRetryRead}}" bindtap="onSubmit">保存</button>
   </view>
 </view>

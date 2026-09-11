@@ -18,7 +18,7 @@
     <view class="card">
       <text class="label">邀请记录 · {{total}} 条</text>
       <picker range="{{filters}}" value="{{filterIndex}}" disabled="{{busy || loading}}" bindchange="onFilterChange"><view class="field">筛选：{{filters[filterIndex]}} ▾</view></picker>
-      <text class="description" wx:if="{{!items.length && !loading}}">暂无符合条件的邀请</text>
+      <text class="description" wx:if="{{!items.length && !loading && !errorMessage}}">暂无符合条件的邀请</text>
       <view class="row" wx:for="{{items}}" wx:key="id">
         <text class="label">#{{item.id}} · {{item.status === 'ACTIVE' ? '有效' : item.status === 'USED' ? '已使用' : item.status === 'REVOKED' ? '已撤销' : '已过期'}}</text>
         <text class="description">创建者：{{item.createdByName}}</text>

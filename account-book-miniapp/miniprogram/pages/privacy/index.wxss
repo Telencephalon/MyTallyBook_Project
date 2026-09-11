@@ -1,0 +1,33 @@
+.privacy-page,
+.intro-card,
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.privacy-page {
+  gap: 24rpx;
+}
+
+.intro-card,
+.section {
+  gap: 16rpx;
+}
+
+.title {
+  color: #172033;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.section-title {
+  color: #172033;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.paragraph {
+  color: #526079;
+  font-size: 27rpx;
+  line-height: 1.8;
+}

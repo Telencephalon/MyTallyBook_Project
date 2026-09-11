@@ -4,6 +4,7 @@ import type { Entry } from '../../types/entry'
 import type { MonthlySummary } from '../../types/statistics'
 import { AppError } from '../../types/error'
 import { roleLabel, toErrorView } from '../../utils/presentation'
+import { navigateToPage } from '../../utils/navigation'
 
 Page({
   _active: true,
@@ -39,11 +40,11 @@ Page({
     this._active = true
     ++this._generation
     this.setData({
-      loading: false, loggingOut: false, summaryLoading: false, recentLoading: false,
+      loading: false, summaryLoading: false, recentLoading: false,
       summary: null, summaryError: '', summaryRequestId: '',
       recentEntries: [], recentError: '', recentRequestId: '',
     })
-    await this.loadContext(true)
+    if (!this.data.loggingOut) await this.loadContext(true)
   },
 
   onHide() {
@@ -199,7 +200,7 @@ Page({
   },
 
   openEntries() {
-    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) wx.navigateTo({ url: '/pages/entry-list/index' })
+    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) navigateToPage('/pages/entry-list/index')
   },
 
   openEntryCreate() {
@@ -207,7 +208,7 @@ Page({
   },
 
   openStatistics() {
-    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) wx.navigateTo({ url: '/pages/statistics/index' })
+    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) navigateToPage('/pages/statistics/index')
   },
 
   logout() {
@@ -241,7 +242,7 @@ Page({
         requestId: errorView.requestId,
       })
     } finally {
-      if (isActive() && (sameIdentity() || wasCleared())) this.setData({ loggingOut: false })
+      if (operation === this._logoutOperation) this.setData({ loggingOut: false })
     }
   },
 })

@@ -1,15 +1,44 @@
 import type { EntryType } from './catalog'
 
-export interface MonthlySummary {
-  month: string
+export type StatisticsRangeType = 'MONTH' | 'ALL' | 'RANGE'
+
+export interface StatisticsPeriodMeta {
+  month: string | null
+  rangeType: StatisticsRangeType
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface StatisticsQuery {
+  month?: string
+  rangeType?: StatisticsRangeType
+  startDate?: string
+  endDate?: string
+  page?: number
+}
+
+export interface MonthlySummary extends StatisticsPeriodMeta {
   income: string
   expense: string
   net: string
   entryCount: number
 }
 
-export interface DailyStatisticsItem extends Omit<MonthlySummary, 'month'> { date: string }
-export interface DailyTrend { month: string; items: DailyStatisticsItem[] }
+export interface DailyStatisticsItem {
+  date: string
+  income: string
+  expense: string
+  net: string
+  entryCount: number
+}
+export interface DailyTrend extends StatisticsPeriodMeta {
+  items: DailyStatisticsItem[]
+  page: number
+  pageSize: number
+  totalDays: number
+  totalPages: number
+  hasNext: boolean
+}
 
 export interface RankingItem {
   id: number
@@ -19,8 +48,7 @@ export interface RankingItem {
   entryCount: number
 }
 
-export interface RankingStatistics {
-  month: string
+export interface RankingStatistics extends StatisticsPeriodMeta {
   entryType: EntryType
   total: string
   items: RankingItem[]
@@ -35,4 +63,4 @@ export interface AccountStatisticsItem {
   entryCount: number
 }
 
-export interface AccountStatistics { month: string; items: AccountStatisticsItem[] }
+export interface AccountStatistics extends StatisticsPeriodMeta { items: AccountStatisticsItem[] }

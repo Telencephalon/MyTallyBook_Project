@@ -1,0 +1,85 @@
+.settings-page,
+.identity-copy,
+.section,
+.action-list,
+.error-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-page {
+  gap: 32rpx;
+}
+
+.identity-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.identity-copy {
+  min-width: 0;
+  gap: 10rpx;
+}
+
+.identity-name {
+  color: #172033;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.identity-meta {
+  color: #667085;
+  font-size: 26rpx;
+}
+
+.compact-button {
+  margin: 0;
+  padding: 0 24rpx;
+  border: 0;
+  background: #e8f2ff;
+  color: #1677ff;
+  font-size: 26rpx;
+  line-height: 64rpx;
+}
+
+.compact-button::after,
+.row-button::after {
+  border: 0;
+}
+
+.section {
+  gap: 16rpx;
+}
+
+.section-title {
+  color: #667085;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.action-list {
+  gap: 2rpx;
+  padding-top: 8rpx;
+  padding-bottom: 8rpx;
+}
+
+.row-button {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #ffffff;
+  color: #172033;
+  font-size: 29rpx;
+  line-height: 88rpx;
+  text-align: left;
+}
+
+.error-panel {
+  gap: 16rpx;
+  padding: 24rpx;
+  border-radius: 18rpx;
+  background: #fff1f0;
+}

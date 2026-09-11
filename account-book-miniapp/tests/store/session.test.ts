@@ -45,9 +45,9 @@ const ledger: Ledger = {
 
 function createStore(): { storage: MemoryStorage; store: SessionStore } {
   const storage = new MemoryStorage()
-  return {
-    storage,
-    store: new SessionStore(storage, () => NOW),
+    return {
+      storage,
+    store: new SessionStore(storage, () => NOW, 'develop|http://127.0.0.1:7631'),
   }
 }
 
@@ -65,6 +65,7 @@ describe('SessionStore', () => {
       version: 1,
       token: 'raw-session-token',
       expiresAt: FUTURE,
+      environmentId: 'develop|http://127.0.0.1:7631',
     })
     expect(store.getToken()).toBe('raw-session-token')
   })
@@ -75,10 +76,27 @@ describe('SessionStore', () => {
       version: 1,
       token: 'persisted-token',
       expiresAt: FUTURE,
+      environmentId: 'develop|http://127.0.0.1:7631',
     })
 
     expect(store.hydrate()).toBe(true)
     expect(store.getToken()).toBe('persisted-token')
+  })
+
+  it('does not restore a token from another environment or a legacy record', () => {
+    const { storage, store } = createStore()
+    storage.values.set(SESSION_STORAGE_KEY, {
+      version: 1,
+      token: 'wrong-environment',
+      expiresAt: FUTURE,
+      environmentId: 'release|https://api.example.com',
+    })
+    expect(store.hydrate()).toBe(false)
+    expect(storage.values.has(SESSION_STORAGE_KEY)).toBe(false)
+
+    storage.values.set(SESSION_STORAGE_KEY, { version: 1, token: 'legacy', expiresAt: FUTURE })
+    expect(store.hydrate()).toBe(false)
+    expect(storage.values.has(SESSION_STORAGE_KEY)).toBe(false)
   })
 
   it.each([

@@ -106,6 +106,7 @@ describe('SessionFlow.start', () => {
       version: 1,
       token: 'persisted-token',
       expiresAt: FUTURE,
+      environmentId: 'develop|http://127.0.0.1:7631',
     })
 
     await expect(harness.flow.start()).resolves.toEqual({ destination: 'HOME' })

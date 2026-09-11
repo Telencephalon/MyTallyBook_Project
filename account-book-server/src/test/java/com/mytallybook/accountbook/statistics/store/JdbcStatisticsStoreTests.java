@@ -21,7 +21,7 @@ class JdbcStatisticsStoreTests {
         var period = StatisticsPeriod.parse("2024-09", Clock.systemUTC());
 
         store.summary(period);
-        store.daily(period);
+        store.daily(period, period.startInclusive(), period.endExclusive());
         store.categories(period, "EXPENSE");
         store.accounts(period);
         store.members(period, "INCOME");
@@ -46,6 +46,28 @@ class JdbcStatisticsStoreTests {
         verify(jdbc).query(sql.capture(), any(RowMapper.class), arguments.capture());
         assertThat(normalize(sql.getValue())).contains("e.entry_date>=?").doesNotContain("e.entry_date<?");
         assertThat(arguments.getValue()).containsExactly(java.sql.Date.valueOf(LocalDate.of(9999, 12, 1)));
+    }
+
+    @Test
+    void allTimeAggregationsDoNotBindFakeDateRangeAndDailyBindsOnlyRequestedPage() {
+        var jdbc = mock(JdbcTemplate.class);
+        var store = new JdbcStatisticsStore(jdbc);
+        var period = StatisticsPeriod.parse(null, "all", null, null, Clock.systemUTC());
+
+        store.summary(period);
+        store.daily(period, LocalDate.of(2024, 2, 1), LocalDate.of(2024, 3, 3));
+        store.extent(period);
+
+        var sql = ArgumentCaptor.forClass(String.class);
+        var arguments = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc, times(3)).query(sql.capture(), any(RowMapper.class), arguments.capture());
+        assertThat(normalize(sql.getAllValues().get(0))).doesNotContain("e.entry_date>=?", "e.entry_date<?");
+        assertThat(normalize(sql.getAllValues().get(1))).contains("e.entry_date>=?", "e.entry_date<?", "GROUP BY e.entry_date");
+        assertThat(arguments.getAllValues().get(1)).containsExactly(
+                java.sql.Date.valueOf(LocalDate.of(2024, 2, 1)),
+                java.sql.Date.valueOf(LocalDate.of(2024, 3, 3)));
+        assertThat(normalize(sql.getAllValues().get(2))).contains("MIN(e.entry_date)", "MAX(e.entry_date)",
+                "e.ledger_id=1", "e.deleted_at IS NULL");
     }
 
     @Test

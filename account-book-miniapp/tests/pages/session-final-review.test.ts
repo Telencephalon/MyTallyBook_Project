@@ -103,7 +103,7 @@ describe('final review: actual home logout across invite acceptance', () => {
     const data = structuredClone(page.data)
     h.request().fail({ errMsg: 'request:fail offline' })
     await operation
-    expect(page.data).toEqual(data)
+    expect(page.data).toEqual({ ...data, loggingOut: false })
     expect(h.platform.reLaunch).not.toHaveBeenCalled()
   })
 
@@ -116,7 +116,7 @@ describe('final review: actual home logout across invite acceptance', () => {
     h.reply(h.request(), { state: 'LOGGED_OUT' })
     await operation
     expect(h.platform.reLaunch).not.toHaveBeenCalled()
-    expect(page.data).toEqual(data)
+    expect(page.data).toEqual({ ...data, loggingOut: false })
   })
 })
 
@@ -250,7 +250,7 @@ describe('final review: actual nickname flow and profile across context changes'
     h.reply(h.request(), { ...owner, nickname: '新昵称' })
     await operation
     expect(h.platform.navigateBack).not.toHaveBeenCalled()
-    expect(page.data).toEqual(data)
+    expect(page.data).toEqual({ ...data, saving: false })
   })
 
   it('nickname response cannot overwrite context once a newer refresh has started but not completed', async () => {
@@ -283,15 +283,19 @@ describe('final review: actual nickname flow and profile across context changes'
     page.onShow?.()
     await vi.waitFor(() => expect(page.data.loading).toBe(false))
     page.onNicknameInput({ detail: { value: '第二次修改' } })
-    const newOperation = page.saveProfile()
-    const newRequest = h.request()
-    expect(newRequest).not.toBe(oldRequest)
+    page.saveProfile()
+    expect(h.request()).toBe(oldRequest)
     if (outcome === 'success') h.reply(oldRequest, { ...owner, nickname: '第一次修改' })
     else oldRequest.fail({ errMsg: 'request:fail offline' })
     await oldOperation
-    expect(page.data.saving).toBe(true)
+    expect(page.data.saving).toBe(false)
     expect(page.data.errorMessage).toBe('')
     expect(h.runtime.session.getUser()?.nickname).toBe(owner.nickname)
+    await page.onShow()
+    page.onNicknameInput({ detail: { value: '第二次修改' } })
+    const newOperation = page.saveProfile()
+    const newRequest = h.request()
+    expect(newRequest).not.toBe(oldRequest)
     h.reply(newRequest, { ...owner, nickname: '第二次修改' })
     await newOperation
     expect(page.data.originalNickname).toBe('第二次修改')

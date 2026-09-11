@@ -1,0 +1,21 @@
+<view class="page static-page">
+  <view class="brand-card card">
+    <view class="brand-mark">账</view>
+    <text class="brand-title">{{appName}}</text>
+    <text class="muted">版本 {{version}}</text>
+  </view>
+
+  <view class="card detail-list">
+    <view class="detail-row"><text class="label">运营方</text><text>{{operatorText}}</text></view>
+    <view class="detail-row"><text class="label">联系方式</text><text>{{contactText}}</text></view>
+    <view class="detail-row"><text class="label">备案状态</text><text>{{filingText}}</text></view>
+    <view class="detail-row"><text class="label">备案号</text><text>{{filingNumberText}}</text></view>
+  </view>
+
+  <view class="card query-card">
+    <text class="section-title">工信部备案查询</text>
+    <text class="selectable-url" user-select="true">{{filingQueryUrl}}</text>
+    <text class="muted">备案尚未完成，以上状态不代表已经备案。</text>
+    <button class="button button-secondary" bindtap="copyFilingQueryUrl">复制查询地址</button>
+  </view>
+</view>

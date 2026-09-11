@@ -45,7 +45,8 @@ public class JdbcStatisticsStore implements StatisticsStore {
     }
 
     @Override
-    public List<DailyRow> daily(StatisticsPeriod period) {
+    public List<DailyRow> daily(StatisticsPeriod period, java.time.LocalDate pageStartInclusive,
+                                java.time.LocalDate pageEndExclusive) {
         var query = periodQuery("""
                 SELECT e.entry_date,
                        COALESCE(SUM(CASE WHEN e.entry_type='INCOME' THEN e.amount ELSE 0 END),0) AS income,
@@ -53,6 +54,12 @@ public class JdbcStatisticsStore implements StatisticsStore {
                        COUNT(*) AS entry_count
                 FROM book_entry e WHERE e.ledger_id=1 AND e.deleted_at IS NULL
                 """, period);
+        query.sql += " AND e.entry_date>=?";
+        query.arguments.add(Date.valueOf(pageStartInclusive));
+        if (pageEndExclusive != null) {
+            query.sql += " AND e.entry_date<?";
+            query.arguments.add(Date.valueOf(pageEndExclusive));
+        }
         query.sql += " GROUP BY e.entry_date ORDER BY e.entry_date ASC";
         return jdbc().query(query.sql, (row, index) -> new DailyRow(row.getDate("entry_date").toLocalDate(),
                 amount(row.getBigDecimal("income")), amount(row.getBigDecimal("expense")),
@@ -103,13 +110,28 @@ public class JdbcStatisticsStore implements StatisticsStore {
         return jdbc().query(query.sql, rankingMapper(), query.arguments.toArray());
     }
 
+    @Override
+    public DateExtent extent(StatisticsPeriod period) {
+        var query = periodQuery("""
+                SELECT MIN(e.entry_date) AS start_date,MAX(e.entry_date) AS end_date
+                FROM book_entry e WHERE e.ledger_id=1 AND e.deleted_at IS NULL
+                """, period);
+        return jdbc().query(query.sql, (row, index) -> new DateExtent(
+                row.getDate("start_date") == null ? null : row.getDate("start_date").toLocalDate(),
+                row.getDate("end_date") == null ? null : row.getDate("end_date").toLocalDate()),
+                query.arguments.toArray()).stream().findFirst().orElse(new DateExtent(null, null));
+    }
+
     private static Query periodQuery(String prefix, StatisticsPeriod period) {
         var arguments = new ArrayList<Object>();
-        var sql = new StringBuilder(prefix).append(" AND e.entry_date>=?");
-        arguments.add(Date.valueOf(period.startInclusive()));
-        if (period.endExclusive() != null) {
-            sql.append(" AND e.entry_date<?");
-            arguments.add(Date.valueOf(period.endExclusive()));
+        var sql = new StringBuilder(prefix);
+        if (period.rangeType() != StatisticsPeriod.RangeType.ALL) {
+            sql.append(" AND e.entry_date>=?");
+            arguments.add(Date.valueOf(period.startInclusive()));
+            if (period.endExclusive() != null) {
+                sql.append(" AND e.entry_date<?");
+                arguments.add(Date.valueOf(period.endExclusive()));
+            }
         }
         return new Query(sql.toString(), arguments);
     }

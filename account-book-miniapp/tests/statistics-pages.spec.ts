@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 type PageShape = Record<string, any> & { data: Record<string, any>; setData(update: object): void }
 
-const summary = { month: '2024-09', income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }
-const daily = { month: '2024-09', items: [{ date: '2024-09-01', income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }] }
-const categories = { month: '2024-09', entryType: 'EXPENSE', total: '30.05', items: [{ id: 7, name: '餐饮', amount: '30.05', percentage: '100.00', entryCount: 1 }] }
-const accounts = { month: '2024-09', items: [{ id: 8, name: '现金', income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }] }
-const members = { month: '2024-09', entryType: 'EXPENSE', total: '30.05', items: [{ id: 1, name: '历史成员', amount: '30.05', percentage: '100.00', entryCount: 1 }] }
+const period = { rangeType: 'MONTH', startDate: '2024-09-01', endDate: '2024-09-30' }
+const summary = { month: '2024-09', ...period, income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }
+const daily = { month: '2024-09', ...period, page: 1, pageSize: 31, totalDays: 30, totalPages: 1, hasNext: false, items: [{ date: '2024-09-01', income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }] }
+const categories = { month: '2024-09', ...period, entryType: 'EXPENSE', total: '30.05', items: [{ id: 7, name: '餐饮', amount: '30.05', percentage: '100.00', entryCount: 1 }] }
+const accounts = { month: '2024-09', ...period, items: [{ id: 8, name: '现金', income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }] }
+const members = { month: '2024-09', ...period, entryType: 'EXPENSE', total: '30.05', items: [{ id: 1, name: '历史成员', amount: '30.05', percentage: '100.00', entryCount: 1 }] }
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -44,6 +47,38 @@ async function loadPage(runtime: ReturnType<typeof runtimeFor>) {
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('statistics page', () => {
+  it('uses the approved navigation title', () => {
+    const config = JSON.parse(readFileSync(resolve(__dirname, '../miniprogram/pages/statistics/index.json'), 'utf8'))
+    expect(config.navigationBarTitleText).toBe('统计')
+  })
+
+  it('refreshes the unchosen initial month at first page entry but preserves explicit month on return', async () => {
+    const today = vi.fn().mockReturnValue('2024-01-31')
+    vi.doMock('../miniprogram/utils/bookkeeping', () => ({ shanghaiToday: today }))
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    runtime.statistics.summary.mockImplementation(query => ({
+      ...summary,
+      month: typeof query === 'string' ? query : summary.month,
+    }))
+    today.mockReturnValue('2024-02-01')
+
+    await page.onShow()
+
+    expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-02')
+    expect(page.data.month).toBe('2024-02')
+
+    runtime.statistics.summary.mockClear()
+    await page.onMonthChange({ detail: { value: '2024-01' } })
+    today.mockReturnValue('2024-03-01')
+    runtime.statistics.summary.mockClear()
+
+    await page.onShow()
+
+    expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-01')
+    expect(page.data.month).toBe('2024-01')
+  })
+
   it('loads five independent views for the selected month and switches direction only for rankings', async () => {
     const runtime = runtimeFor()
     const page = await loadPage(runtime)
@@ -264,5 +299,162 @@ describe('statistics page', () => {
 
     expect(page.data.loadState).toBe('empty')
     expect(page.data.errorMessage).toBe('')
+  })
+
+  it('applies all-time scope to all five views and resets daily pagination', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    page.setData({ month: '2024-09' })
+    await page.onShow()
+    Object.values(runtime.statistics).forEach(mock => mock.mockClear())
+
+    await page.onScopeChange({ detail: { value: '1' } })
+
+    const query = { rangeType: 'ALL' }
+    expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
+    expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'EXPENSE')
+    expect(runtime.statistics.accounts).toHaveBeenCalledWith(query)
+    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'EXPENSE')
+    expect(page.data.dailyPage).toBe(1)
+  })
+
+  it('keeps custom draft dates separate until validation applies the range', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    page.setData({ month: '2024-09' })
+    await page.onShow()
+    Object.values(runtime.statistics).forEach(mock => mock.mockClear())
+
+    await page.onScopeChange({ detail: { value: '2' } })
+    page.onCustomStartChange({ detail: { value: '2024-03-05' } })
+    page.onCustomEndChange({ detail: { value: '2024-03-01' } })
+    await page.onApplyCustomRange()
+
+    expect(page.data.errorMessage).not.toBe('')
+    expect(runtime.statistics.summary).not.toHaveBeenCalled()
+    expect(page.data.appliedRangeLabel).toBe('2024-09')
+
+    page.onCustomStartChange({ detail: { value: '2024-02-29' } })
+    page.onCustomEndChange({ detail: { value: '2024-03-01' } })
+    await page.onApplyCustomRange()
+
+    const query = { startDate: '2024-02-29', endDate: '2024-03-01' }
+    expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
+    expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
+    expect(page.data.appliedRangeLabel).toBe('2024-02-29 至 2024-03-01')
+  })
+
+  it('daily next page only fetches daily rows and keeps full-range summary and rankings', async () => {
+    const runtime = runtimeFor()
+    runtime.statistics.daily.mockResolvedValueOnce({ ...daily, hasNext: true, totalPages: 2 })
+      .mockResolvedValueOnce({ ...daily, page: 2, hasNext: false, items: [{ ...daily.items[0], date: '2024-10-01' }] })
+    const page = await loadPage(runtime)
+    page.setData({ month: '2024-09' })
+    await page.onShow()
+    Object.values(runtime.statistics).forEach(mock => mock.mockClear())
+
+    await page.onDailyNext()
+
+    expect(runtime.statistics.daily).toHaveBeenCalledWith({ month: '2024-09', page: 2 })
+    expect(runtime.statistics.summary).not.toHaveBeenCalled()
+    expect(runtime.statistics.categories).not.toHaveBeenCalled()
+    expect(runtime.statistics.accounts).not.toHaveBeenCalled()
+    expect(runtime.statistics.members).not.toHaveBeenCalled()
+    expect(page.data.summary).toEqual(summary)
+    expect(page.data.daily[0].date).toBe('2024-10-01')
+  })
+
+  it('rejects an out-of-order daily page when a newer scope load is active', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    page.setData({ month: '2024-09' })
+    await page.onShow()
+    page.setData({ dailyHasNext: true })
+    Object.values(runtime.statistics).forEach(mock => mock.mockClear())
+
+    const stalePage = deferred<typeof daily>()
+    runtime.statistics.daily.mockReturnValueOnce(stalePage.promise)
+    const oldPageLoad = page.onDailyNext()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const latestSummary = deferred<typeof summary>()
+    runtime.statistics.summary.mockReturnValueOnce(latestSummary.promise)
+    const latestScopeLoad = page.onScopeChange({ detail: { value: '1' } })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(page.data.loading).toBe(true)
+
+    stalePage.resolve({ ...daily, page: 2, items: [{ ...daily.items[0], date: '2099-01-01' }] })
+    await oldPageLoad
+
+    expect(page.data.loading).toBe(true)
+    expect(page.data.daily).toEqual([])
+
+    latestSummary.resolve({ ...summary, rangeType: 'ALL', startDate: '2024-01-01', endDate: '2024-09-30' })
+    await latestScopeLoad
+
+    expect(page.data.appliedScope).toBe('ALL')
+    expect(page.data.loading).toBe(false)
+  })
+
+  it('rejects an out-of-order daily page while a newer direction load is active', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    page.setData({ month: '2024-09' })
+    await page.onShow()
+    page.setData({ dailyHasNext: true })
+    Object.values(runtime.statistics).forEach(mock => mock.mockClear())
+
+    const stalePage = deferred<typeof daily>()
+    runtime.statistics.daily.mockReturnValueOnce(stalePage.promise)
+    const oldPageLoad = page.onDailyNext()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const latestCategories = deferred<typeof categories>()
+    const latestMembers = deferred<typeof members>()
+    runtime.statistics.categories.mockReturnValueOnce(latestCategories.promise)
+    runtime.statistics.members.mockReturnValueOnce(latestMembers.promise)
+    const latestDirectionLoad = page.onDirectionChange({ detail: { value: '1' } })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(page.data.loading).toBe(true)
+
+    stalePage.resolve({ ...daily, page: 2, items: [{ ...daily.items[0], date: '2099-02-01' }] })
+    await oldPageLoad
+
+    expect(page.data.loading).toBe(true)
+    expect(page.data.daily).toEqual(daily.items)
+
+    latestCategories.resolve({ ...categories, entryType: 'INCOME' })
+    latestMembers.resolve({ ...members, entryType: 'INCOME' })
+    await latestDirectionLoad
+
+    expect(page.data.entryType).toBe('INCOME')
+    expect(page.data.loading).toBe(false)
+  })
+
+  it('rejects a daily page response after the session revision changes without clearing loading', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    page.setData({ month: '2024-09' })
+    await page.onShow()
+    page.setData({ dailyHasNext: true })
+    Object.values(runtime.statistics).forEach(mock => mock.mockClear())
+
+    const stalePage = deferred<typeof daily>()
+    runtime.statistics.daily.mockReturnValueOnce(stalePage.promise)
+    const oldPageLoad = page.onDailyNext()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    runtime.setRevision(2)
+    stalePage.resolve({ ...daily, page: 2, items: [{ ...daily.items[0], date: '2099-03-01' }] })
+    await oldPageLoad
+
+    expect(page.data.loading).toBe(true)
+    expect(page.data.daily).toEqual(daily.items)
   })
 })

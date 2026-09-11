@@ -1,0 +1,62 @@
+.static-page,
+.brand-card,
+.detail-list,
+.query-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.static-page {
+  gap: 28rpx;
+}
+
+.brand-card {
+  align-items: center;
+  gap: 14rpx;
+}
+
+.brand-mark {
+  width: 96rpx;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: #1677ff;
+  color: #ffffff;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.brand-title {
+  color: #172033;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.detail-list,
+.query-card {
+  gap: 20rpx;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  color: #344054;
+}
+
+.label,
+.muted {
+  color: #667085;
+}
+
+.section-title {
+  color: #172033;
+  font-weight: 600;
+}
+
+.selectable-url {
+  color: #1677ff;
+  word-break: break-all;
+}

@@ -38,6 +38,31 @@
   font-size: 26rpx;
 }
 
+.public-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+}
+
+.public-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1677ff;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.public-link::after {
+  border: 0;
+}
+
+.link-divider {
+  color: #98a2b3;
+}
+
 .status-card {
   width: 100%;
   display: flex;

@@ -7,10 +7,21 @@ page {
 
 .page {
   min-height: 100vh;
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+input,
+textarea {
+  min-height: 80rpx;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+textarea {
+  min-height: 160rpx;
 }
 
 .card {

@@ -75,7 +75,7 @@ describe('real invitation/session/member flows', () => {
     expect(h.runtime.session.getToken()).toBe('server-issued-session')
     expect(h.requests.slice(2).every(r => r.header.Authorization === 'Bearer server-issued-session')).toBe(true)
     expect(h.runtime.session.getUser()).toMatchObject({ memberId: 22, role: 'MEMBER', displayName: null })
-    expect([...h.storage.values()]).toEqual([{ version: 1, token: 'server-issued-session', expiresAt: '2099-01-01T00:00:00Z' }])
+    expect([...h.storage.values()]).toEqual([{ version: 1, token: 'server-issued-session', expiresAt: '2099-01-01T00:00:00Z', environmentId: 'develop|http://127.0.0.1:7631' }])
   })
   it('rejects malformed token before consuming wx code', async () => {
     const h = await harness()

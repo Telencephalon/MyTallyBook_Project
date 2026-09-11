@@ -22,35 +22,56 @@ public class StatisticsController {
     @GetMapping("/monthly-summary")
     public ApiResponse<StatisticsModels.MonthlySummary> summary(
             @AuthenticationPrincipal CurrentUser actor, @RequestParam(required = false) String month,
+            @RequestParam(required = false) String range,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             HttpServletRequest request) {
-        return ApiResponse.success(service.summary(actor, month), RequestIdFilter.getRequestId(request));
+        return ApiResponse.success(service.summary(actor, month, range, startDate, endDate),
+                RequestIdFilter.getRequestId(request));
     }
 
     @GetMapping("/daily-trend")
     public ApiResponse<StatisticsModels.DailyTrend> daily(
             @AuthenticationPrincipal CurrentUser actor, @RequestParam(required = false) String month,
+            @RequestParam(required = false) String range,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String page,
             HttpServletRequest request) {
-        return ApiResponse.success(service.daily(actor, month), RequestIdFilter.getRequestId(request));
+        return ApiResponse.success(service.daily(actor, month, range, startDate, endDate, page),
+                RequestIdFilter.getRequestId(request));
     }
 
     @GetMapping("/categories")
     public ApiResponse<StatisticsModels.Ranking> categories(
             @AuthenticationPrincipal CurrentUser actor, @RequestParam(required = false) String month,
+            @RequestParam(required = false) String range,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String entryType, HttpServletRequest request) {
-        return ApiResponse.success(service.categories(actor, month, entryType), RequestIdFilter.getRequestId(request));
+        return ApiResponse.success(service.categories(actor, month, range, startDate, endDate, entryType),
+                RequestIdFilter.getRequestId(request));
     }
 
     @GetMapping("/accounts")
     public ApiResponse<StatisticsModels.AccountStatistics> accounts(
             @AuthenticationPrincipal CurrentUser actor, @RequestParam(required = false) String month,
+            @RequestParam(required = false) String range,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             HttpServletRequest request) {
-        return ApiResponse.success(service.accounts(actor, month), RequestIdFilter.getRequestId(request));
+        return ApiResponse.success(service.accounts(actor, month, range, startDate, endDate),
+                RequestIdFilter.getRequestId(request));
     }
 
     @GetMapping("/members")
     public ApiResponse<StatisticsModels.Ranking> members(
             @AuthenticationPrincipal CurrentUser actor, @RequestParam(required = false) String month,
+            @RequestParam(required = false) String range,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String entryType, HttpServletRequest request) {
-        return ApiResponse.success(service.members(actor, month, entryType), RequestIdFilter.getRequestId(request));
+        return ApiResponse.success(service.members(actor, month, range, startDate, endDate, entryType),
+                RequestIdFilter.getRequestId(request));
     }
 }

@@ -1,5 +1,5 @@
 .statistics-page { gap: 30rpx; }
-.filter-card { display: flex; gap: 24rpx; }
+.filter-card { display: flex; flex-wrap: wrap; gap: 24rpx; }
 .filter-item { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 12rpx; }
 .filter-label, .summary-label, .row-detail, .entry-count, .empty-text { color: #667085; font-size: 24rpx; }
 .picker-value { padding: 18rpx; border-radius: 14rpx; background: #f4f7fb; color: #172033; text-align: center; }
@@ -16,6 +16,11 @@
 .row-line { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
 .row-name { color: #172033; font-weight: 600; }
 .daily-money { display: flex; flex-wrap: wrap; gap: 18rpx; color: #475467; font-size: 24rpx; }
+.range-actions { flex-basis: 100%; }
+.range-row, .daily-pager, .pager-actions { display: flex; align-items: center; gap: 14rpx; }
+.range-row picker { flex: 1; min-width: 0; }
+.range-separator { color: #667085; font-size: 24rpx; }
+.daily-pager { justify-content: space-between; flex-wrap: wrap; }
 .bar-track { height: 14rpx; overflow: hidden; border-radius: 999rpx; background: #edf0f5; }
 .bar-fill { height: 100%; border-radius: inherit; background: #ff8a65; }
 .member-bar { background: #4b9cff; }

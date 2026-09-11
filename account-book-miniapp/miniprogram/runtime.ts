@@ -15,7 +15,7 @@ import { HttpClient, wechatRequestExecutor } from './services/http'
 import { LedgerApi } from './services/ledger'
 import { UserApi } from './services/user'
 import { getWechatCode } from './services/wechat'
-import { sessionStore, type SessionStore } from './store/session'
+import { createSessionStore, type SessionStore } from './store/session'
 
 export interface Runtime {
   session: SessionStore
@@ -34,28 +34,30 @@ export function getRuntime(): Runtime {
     return cachedRuntime
   }
 
+  const environment = getApiEnvironment()
+  const session = createSessionStore(`${environment.envVersion ?? 'unknown'}|${environment.baseUrl}`)
   const http = new HttpClient({
-    environment: getApiEnvironment(),
-    getToken: () => sessionStore.getToken(),
+    environment,
+    getToken: () => session.getToken(),
     onUnauthorized: () => {
-      sessionStore.clear()
+      session.clear()
       wx.reLaunch({ url: '/pages/login/index' })
     },
     executor: wechatRequestExecutor,
   })
 
   const flow = new SessionFlow(
-    sessionStore,
+    session,
     new AuthApi(http),
     new UserApi(http),
     new LedgerApi(http),
     () => getWechatCode(),
   )
   cachedRuntime = {
-    session: sessionStore,
+    session,
     flow,
     invites: new InviteFlow(new InviteApi(http), flow, () => getWechatCode()),
-    members: new MemberFlow(new MemberApi(http), sessionStore, flow),
+    members: new MemberFlow(new MemberApi(http), session, flow),
     catalog: new CatalogFlow(new CatalogApi(http)),
     entries: new EntryFlow(new EntryApi(http)),
     statistics: new StatisticsFlow(new StatisticsApi(http)),

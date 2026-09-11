@@ -28,8 +28,8 @@ Page({
   onShow() {
     this._active = true
     ++this._generation
-    this.setData({ loading: false, saving: false })
-    void this.loadProfile()
+    this.setData({ loading: false })
+    if (!this.data.saving) void this.loadProfile()
   },
 
   onHide() {
@@ -43,7 +43,7 @@ Page({
   },
 
   async loadProfile() {
-    if (!this._active || this.data.loading) {
+    if (!this._active || this.data.loading || this.data.saving) {
       return
     }
 
@@ -130,10 +130,10 @@ Page({
         requestId: errorView.requestId,
       })
     } finally {
-      if (isOperationCurrent()) {
+      if (operation === this._saveOperation) {
         this.setData({
           saving: false,
-          ...(!isContextCurrent() ? {
+          ...(isOperationCurrent() && !isContextCurrent() ? {
             errorMessage: '登录身份或权限已变化；昵称修改可能已生效，请返回首页刷新后确认资料',
             requestId: '',
           } : {}),

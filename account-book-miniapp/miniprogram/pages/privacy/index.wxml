@@ -1,0 +1,31 @@
+<view class="page privacy-page">
+  <view class="card intro-card">
+    <text class="title">隐私说明</text>
+    <text class="paragraph">随手账仅处理实现固定共享记账所需的数据，不添加与记账无关的平台权限。</text>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">微信身份与会话数据</text>
+    <text class="paragraph">我们使用微信身份标识、昵称和已有头像展示信息识别账本成员，并使用会话令牌维持登录状态。会话数据用于身份校验和权限判断。</text>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">共享账本与记账数据</text>
+    <text class="paragraph">我们处理共享账本信息、成员身份、角色与名额，以及收入、支出等记账记录、分类和资金账户，用于成员共同查看和维护账本。</text>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">邀请、审计与运行信息</text>
+    <text class="paragraph">我们处理邀请记录和审计记录，以支持成员加入、权限管理和变更追溯；也会处理运行错误、请求编号等请求元数据，用于排查服务问题。</text>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">退出与数据保留</text>
+    <text class="paragraph">退出登录会结束当前设备上的会话，但不会删除共享账本或历史记录。账本及历史仍由有权限的成员共同使用。</text>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">设备权限边界</text>
+    <text class="paragraph">当前功能不申请与固定共享记账无关的设备能力。邀请码和备案查询地址仅在用户明确点击复制按钮后写入系统粘贴区域。</text>
+  </view>
+</view>

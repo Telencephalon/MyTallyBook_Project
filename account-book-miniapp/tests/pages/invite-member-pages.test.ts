@@ -1,10 +1,34 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { harness, inviteToken, other, owner } from '../invite-member-harness'
 import type { RawRequestOptions } from '../../miniprogram/services/http'
+import { readFileSync } from 'node:fs'
 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('actual invite pages at Page/wx boundary', () => {
+  it('invite history empty state is excluded while a read error is visible', () => {
+    const wxml = readFileSync(new URL('../../miniprogram/pages/invite-create/index.wxml', import.meta.url), 'utf8')
+    expect(wxml).toMatch(/!items\.length[^>]*!loading[^>]*!errorMessage/)
+  })
+
+  it('failed invite history keeps the actual page in error state with no empty-success rows', async () => {
+    const h = await harness()
+    h.respond(r => {
+      if (r.url.includes('/invites?')) {
+        h.reply(r, null, 500, 'INVITE_HISTORY_FAILED')
+        return true
+      }
+      return false
+    })
+    const page = await h.page('invite-create')
+
+    await page.onShow()
+
+    expect(page.data.items).toEqual([])
+    expect(page.data.errorMessage).not.toBe('')
+    expect(page.data.loading).toBe(false)
+  })
+
   it('direct invite entry never auto-logins; duplicate clicks consume one code; success enters home', async () => {
     const h = await harness()
     const page = await h.page('invite-accept')
@@ -147,6 +171,61 @@ describe('actual invite pages at Page/wx boundary', () => {
 })
 
 describe('actual member pages', () => {
+  it('member list ignores an old read rejection after a newer show completes', async () => {
+    const h = await harness()
+    const page = await h.page('member-list')
+    const reads: RawRequestOptions[] = []
+    h.respond(r => {
+      if (r.url.endsWith('/members') && r.method === 'GET') {
+        reads.push(r)
+        return true
+      }
+      return false
+    })
+
+    const oldLoad = page.onShow()
+    await vi.waitFor(() => expect(reads).toHaveLength(1))
+    page.onUnload()
+    const newLoad = page.onShow()
+    await vi.waitFor(() => expect(reads).toHaveLength(2))
+    h.reply(reads[1]!, { items: [{ ...other, nickname: '新成员' }], activeCount: 1, maxMembers: 10, ownerUserId: 1 })
+    await newLoad
+    h.reply(reads[0]!, null, 500, 'OLD_MEMBER_READ')
+    await oldLoad
+
+    expect(page.data.items).toEqual([expect.objectContaining({ name: '新成员' })])
+    expect(page.data.errorMessage).toBe('')
+    expect(page.data.loading).toBe(false)
+  })
+
+  it('member detail ignores an old read rejection after a newer show completes', async () => {
+    const h = await harness()
+    const page = await h.page('member-edit')
+    page.onLoad({ memberId: '22' })
+    const reads: RawRequestOptions[] = []
+    h.respond(r => {
+      if (r.url.endsWith('/members') && r.method === 'GET') {
+        reads.push(r)
+        return true
+      }
+      return false
+    })
+
+    const oldLoad = page.onShow()
+    await vi.waitFor(() => expect(reads).toHaveLength(1))
+    page.onUnload()
+    page.onShow()
+    await vi.waitFor(() => expect(reads).toHaveLength(2))
+    h.reply(reads[1]!, { items: [{ ...other, nickname: '新成员' }], activeCount: 1, maxMembers: 10, ownerUserId: 1 })
+    await Promise.resolve()
+    h.reply(reads[0]!, null, 500, 'OLD_MEMBER_READ')
+    await oldLoad
+
+    expect(page.data.target).toEqual(expect.objectContaining({ nickname: '新成员' }))
+    expect(page.data.errorMessage).toBe('')
+    expect(page.data.loading).toBe(false)
+  })
+
   it('member list displays alias-null nickname/capacity and navigates by member ID', async () => {
     const h = await harness()
     const page = await h.page('member-list')

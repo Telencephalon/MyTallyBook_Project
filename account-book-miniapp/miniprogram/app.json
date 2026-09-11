@@ -16,8 +16,19 @@
     "pages/entry-create/index",
     "pages/entry-detail/index",
     "pages/entry-edit/index",
-    "pages/statistics/index"
+    "pages/statistics/index",
+    "pages/settings/index",
+    "pages/about/index",
+    "pages/privacy/index"
   ],
+  "tabBar": {
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/entry-list/index", "text": "明细" },
+      { "pagePath": "pages/statistics/index", "text": "统计" },
+      { "pagePath": "pages/settings/index", "text": "我的" }
+    ]
+  },
   "window": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "随手账",

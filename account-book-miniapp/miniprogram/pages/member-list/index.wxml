@@ -8,7 +8,7 @@
       <text class="description">加入：{{item.joinedAt}}（UTC）</text>
       <button class="button button-secondary" data-id="{{item.memberId}}" disabled="{{loading || busy}}" bindtap="openMember">查看成员</button>
     </view>
-    <text class="description" wx:if="{{!items.length && !loading}}">暂无可显示的有效成员</text>
+    <text class="description" wx:if="{{!items.length && !loading && !errorMessage}}">暂无可显示的有效成员</text>
   </view>
   <view class="card" wx:if="{{canLeave}}">
     <text class="label">退出账本</text><text class="description">退出将失去访问权限，重新加入需要邀请。此操作不同于首页的“退出登录”。</text>

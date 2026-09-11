@@ -34,4 +34,9 @@
   </view>
 
   <text class="security-note">微信身份仅用于识别账本成员</text>
+  <view class="public-links">
+    <button class="public-link" bindtap="openAbout">关于</button>
+    <text class="link-divider">·</text>
+    <button class="public-link" bindtap="openPrivacy">隐私说明</button>
+  </view>
 </view>

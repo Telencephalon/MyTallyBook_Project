@@ -13,6 +13,7 @@ Page({
   _rawToken: '',
   _identity: '',
   _generation: 0,
+  _operation: 0,
   _alive: true,
   _sharing: false,
   isCurrent(generation: number) {
@@ -40,6 +41,7 @@ Page({
   async onShow() {
     this._alive = true
     this._sharing = false
+    if (this.data.busy) return
     const generation = ++this._generation
     if (this.identity() !== this._identity) this.clearInvite()
     this.setData({ loading: true, busy: false, canManage: false, errorMessage: '', requestId: '' })
@@ -100,6 +102,7 @@ Page({
     if (!this.canAct() || this.data.busy) return
     const generation = this._generation
     const identity = this._identity
+    const operation = ++this._operation
     this.setData({ busy: true, errorMessage: '', requestId: '' })
     this.clearInvite()
     try {
@@ -117,7 +120,7 @@ Page({
     } catch (error) {
       this.showError(error, generation)
     } finally {
-      if (this.isCurrent(generation)) this.setData({ busy: false })
+      if (operation === this._operation) this.setData({ busy: false })
     }
   },
   onCopy() {
@@ -133,9 +136,10 @@ Page({
   async changePage(page: number) {
     if (!this.canAct() || this.data.busy) return
     const generation = this._generation
+    const operation = ++this._operation
     this.setData({ busy: true, errorMessage: '', requestId: '' })
     try { await this.loadHistory(page, generation) } catch (error) { this.showError(error, generation) }
-    finally { if (this.isCurrent(generation)) this.setData({ busy: false }) }
+    finally { if (operation === this._operation) this.setData({ busy: false }) }
   },
   async nextPage() {
     if (this.data.page * this.data.pageSize < this.data.total) await this.changePage(this.data.page + 1)
@@ -157,6 +161,7 @@ Page({
     const identity = this.identity()
     const revision = getRuntime().session.getRevision()
     const generation = this._generation
+    const operation = ++this._operation
     this.setData({ busy: true, errorMessage: '', requestId: '' })
     try {
       const confirmed = await new Promise<boolean>((resolve, reject) => wx.showModal({
@@ -171,6 +176,6 @@ Page({
       this.clearInvite()
       await this.loadHistory(1, generation)
     } catch (error) { this.showError(error, generation) }
-    finally { if (this.isCurrent(generation)) this.setData({ busy: false }) }
+    finally { if (operation === this._operation) this.setData({ busy: false }) }
   },
 })

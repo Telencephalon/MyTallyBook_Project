@@ -17,25 +17,33 @@ Page({
     id: 0, entryType: 'EXPENSE' as EntryType, amount: '', categoryId: 0, accountId: 0,
     selectedCategoryName: '', selectedAccountName: '',
     entryDate: '', note: '', version: 0, categoryOptions: [] as Choice[], accountOptions: [] as Choice[],
-    loading: false, busy: false, canEdit: false, canReload: false, errorMessage: '', requestId: '',
+    loading: false, busy: false, canEdit: false, canReload: false, canRetryRead: false, errorMessage: '', requestId: '',
   },
-  _active: true, _generation: 0, _dirty: false, _loadedId: 0, _loadedRevision: -1,
+  _active: true, _generation: 0, _writeOperation: 0, _dirty: false, _loadedId: 0, _loadedRevision: -1,
   onLoad(query: Record<string, string>) {
     try { this.setData({ id: validEntryId(query.id) }) }
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message }) }
   },
-  async onShow() { this._active = true; this.setData({ loading: false, busy: false }); await this.loadEntry(false) },
-  onHide() { this._active = false; ++this._generation; this.setData({ loading: false, busy: false }) },
-  onUnload() { this._active = false; ++this._generation; this.setData({ loading: false, busy: false }) },
+  async onShow() { this._active = true; this.setData({ loading: false }); if (!this.data.busy) await this.loadEntry(false) },
+  onHide() { this._active = false; ++this._generation; this.setData({ loading: false }) },
+  onUnload() { this._active = false; ++this._generation; this.setData({ loading: false }) },
 
   async loadEntry(force: boolean) {
     if (!this.data.id) return
-    const generation = ++this._generation; const runtime = getRuntime()
+    const generation = ++this._generation
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ loading: false, errorMessage: view.message, requestId: view.requestId })
+      return
+    }
     const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
     const preserveConflict = !force && this._dirty && this.data.canReload
     this.setData(preserveConflict
       ? { loading: true }
-      : { loading: true, errorMessage: '', requestId: '' })
+      : { loading: true, errorMessage: '', requestId: '', canRetryRead: false })
     try {
       await runtime.flow.refreshContext(); if (!current()) return
       const revision = runtime.session.getRevision()
@@ -53,7 +61,7 @@ Page({
       if (!current()) return
       const view = toErrorView(error)
       const missing = typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'RESOURCE_NOT_FOUND'
-      this.setData({ errorMessage: missing ? '账单不存在或已删除' : view.message, requestId: view.requestId })
+      this.setData({ errorMessage: missing ? '账单不存在或已删除' : view.message, requestId: view.requestId, canRetryRead: !missing })
     } finally { if (current()) this.setData({ loading: false }) }
   },
 
@@ -68,10 +76,13 @@ Page({
       accountId: entry.accountId, entryDate: entry.entryDate, note: entry.note || '', version: entry.version,
       selectedCategoryName: categories.find(item => item.id === entry.categoryId)?.name || entry.categoryName,
       selectedAccountName: accounts.find(item => item.id === entry.accountId)?.name || entry.accountName,
-      categoryOptions: categories, accountOptions: accounts, canEdit: entry.canEdit, canReload: false })
+      categoryOptions: categories, accountOptions: accounts, canEdit: entry.canEdit, canReload: false, canRetryRead: false })
   },
 
-  formLocked() { return !this.data.canEdit || this.data.loading || this.data.busy || this.data.canReload },
+  formLocked() {
+    return !this.data.canEdit || this.data.loading || this.data.busy
+      || this.data.canReload || this.data.canRetryRead
+  },
   onAmountInput(event: WechatMiniprogram.Input) {
     if (!this.formLocked()) { this._dirty = true; this.setData({ amount: event.detail.value }) }
   },
@@ -118,20 +129,27 @@ Page({
     }))
     if (confirmed && current()) await this.loadEntry(true)
   },
+  async retry() {
+    if (!this.data.canRetryRead || this.data.loading || this.data.busy) return
+    await this.loadEntry(false)
+  },
   async onSubmit() {
     if (this.formLocked() || !this.data.id) return
     let body
     try { body = { ...entryDraft(this.data), version: this.data.version } }
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message, requestId: view.requestId }); return }
     const runtime = getRuntime(); const generation = this._generation
+    const operation = ++this._writeOperation
     const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
-    this.setData({ busy: true, errorMessage: '', requestId: '' })
+    this.setData({ busy: true, errorMessage: '', requestId: '', canRetryRead: false })
     try {
       const saved = await runtime.entries.update(this.data.id, body)
       if (current()) wx.redirectTo({ url: `/pages/entry-detail/index?id=${saved.id}` })
     } catch (error) {
       if (!current()) return
-      const view = toErrorView(error); this.setData({ errorMessage: view.message, requestId: view.requestId, canReload: conflict(error) })
-    } finally { if (current()) this.setData({ busy: false }) }
+      const view = toErrorView(error); this.setData({ errorMessage: view.message, requestId: view.requestId, canReload: conflict(error), canRetryRead: false })
+    } finally {
+      if (operation === this._writeOperation) this.setData({ busy: false })
+    }
   },
 })

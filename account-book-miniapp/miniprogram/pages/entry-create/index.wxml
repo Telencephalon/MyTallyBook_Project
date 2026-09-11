@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="error-panel" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text></view>
+  <view class="error-panel" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retryDictionaries">重新读取分类和账户</button></view>
   <view class="card form">
     <text>收支类型</text><picker disabled="{{loading || busy || canRetry}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
     <text>金额</text><input disabled="{{loading || busy || canRetry}}" type="digit" value="{{amount}}" bindinput="onAmountInput"/>

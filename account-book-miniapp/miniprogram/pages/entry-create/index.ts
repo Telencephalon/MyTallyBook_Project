@@ -10,19 +10,31 @@ Page({
     entryType: 'EXPENSE' as EntryType,
     amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '', entryDate: '', note: '',
     categories: [] as Category[], accounts: [] as Account[],
-    loading: false, busy: false, canRetry: false, errorMessage: '', requestId: '',
+    loading: false, busy: false, canRetry: false, canRetryRead: false, errorMessage: '', requestId: '',
   },
   _active: true, _generation: 0, _dictionaryGeneration: 0, _loadedRevision: -1,
   _intent: null as EntryCreateIntent | null,
 
   onLoad() {
     this.setData({ entryDate: shanghaiToday() })
-    this._intent = getRuntime().entries.newCreateIntent()
+    try {
+      this._intent = getRuntime().entries.newCreateIntent()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ errorMessage: view.message, requestId: view.requestId })
+    }
   },
 
   async onShow() {
     this._active = true
-    const runtime = getRuntime()
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ loading: false, busy: false, errorMessage: view.message, requestId: view.requestId })
+      return
+    }
     const revision = runtime.session.getRevision()
     if (this._loadedRevision !== -1 && revision !== this._loadedRevision) {
       this.disableDepartureWarning()
@@ -58,10 +70,17 @@ Page({
   async loadDictionaries() {
     const generation = this._generation
     const dictionaryGeneration = ++this._dictionaryGeneration
-    const runtime = getRuntime()
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ errorMessage: view.message, requestId: view.requestId })
+      return
+    }
     const pageCurrent = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
     const current = () => pageCurrent() && dictionaryGeneration === this._dictionaryGeneration
-    this.setData({ loading: true, errorMessage: '', requestId: '' })
+    this.setData({ loading: true, canRetryRead: false, errorMessage: '', requestId: '' })
     try {
       await runtime.flow.refreshContext()
       if (!current()) return
@@ -80,11 +99,12 @@ Page({
         accountId,
         accountName: accounts.items.find(item => item.id === accountId)?.name || '',
         })
+        this.setData({ canRetryRead: false })
       }
     } catch (error) {
       if (!current()) return
       const view = toErrorView(error)
-      this.setData({ errorMessage: view.message, requestId: view.requestId })
+      this.setData({ errorMessage: view.message, requestId: view.requestId, canRetryRead: true })
     } finally {
       if (current()) this.setData({ loading: false })
     }
@@ -96,6 +116,10 @@ Page({
     this.disableDepartureWarning(); this.setData({ loading: false, busy: false })
   },
   formLocked() { return this.data.loading || this.data.busy || this.data.canRetry },
+  async retryDictionaries() {
+    if (!this.data.canRetryRead || this.data.loading || this.data.busy) return
+    await this.loadDictionaries()
+  },
   onAmountInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ amount: event.detail.value }) },
   onNoteInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ note: event.detail.value }) },
   onDateChange(event: WechatMiniprogram.PickerChange) { if (!this.formLocked()) this.setData({ entryDate: String(event.detail.value) }) },

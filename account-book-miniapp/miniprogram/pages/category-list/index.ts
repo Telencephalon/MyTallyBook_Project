@@ -16,13 +16,21 @@ Page({
   },
   _active: true,
   _generation: 0,
-  _writeGeneration: 0,
+  _writeOperation: 0,
 
   async onShow() {
     this._active = true
-    this.setData({ busy: false, loading: false })
+    this.setData({ loading: false })
+    if (this.data.busy) return
     const generation = ++this._generation
-    const runtime = getRuntime()
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ loading: false, errorMessage: view.message, requestId: view.requestId, canManage: false })
+      return
+    }
     const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
     this.setData({ loading: true, errorMessage: '', requestId: '' })
     try {
@@ -44,18 +52,21 @@ Page({
     }
   },
 
+  async retry() {
+    if (this.data.loading || this.data.busy) return
+    await this.onShow()
+  },
+
   onHide() {
     this._active = false
     ++this._generation
-    ++this._writeGeneration
-    this.setData({ busy: false, loading: false })
+    this.setData({ loading: false })
   },
 
   onUnload() {
     this._active = false
     ++this._generation
-    ++this._writeGeneration
-    this.setData({ busy: false, loading: false })
+    this.setData({ loading: false })
   },
 
   onTypeFilter(event: WechatMiniprogram.PickerChange) {
@@ -85,11 +96,18 @@ Page({
     if (!this.data.canManage || this.data.busy) return
     const id = Number(event.currentTarget.dataset.id)
     if (!this.data.items.some(item => item.id === id)) return
-    const runtime = getRuntime()
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ errorMessage: view.message, requestId: view.requestId })
+      return
+    }
     const generation = this._generation
-    const writeGeneration = ++this._writeGeneration
+    const operation = ++this._writeOperation
     const pageCurrent = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
-    const current = () => pageCurrent() && writeGeneration === this._writeGeneration
+    const current = () => pageCurrent()
     this.setData({ busy: true })
     try {
       const confirmed = await new Promise<boolean>(resolve => wx.showModal({
@@ -109,7 +127,7 @@ Page({
       const view = toErrorView(error)
       this.setData({ errorMessage: view.message, requestId: view.requestId })
     } finally {
-      if (current()) this.setData({ busy: false })
+      if (operation === this._writeOperation) this.setData({ busy: false })
     }
   },
 })

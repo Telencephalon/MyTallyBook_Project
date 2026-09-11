@@ -40,7 +40,7 @@ class StatisticsServiceTests {
     @Test
     void dailyTrendZeroFillsEveryLeapFebruaryDayAndKeepsDateOrder() {
         var h = harness();
-        when(h.store.daily(any())).thenReturn(List.of(
+        when(h.store.daily(any(), any(), any())).thenReturn(List.of(
                 new StatisticsStore.DailyRow(LocalDate.of(2024, 2, 29), new BigDecimal("0.20"), BigDecimal.ZERO, 1),
                 new StatisticsStore.DailyRow(LocalDate.of(2024, 2, 1), new BigDecimal("100.10"), new BigDecimal("30.05"), 2)));
 
@@ -52,6 +52,77 @@ class StatisticsServiceTests {
         assertEquals("70.05", trend.items().getFirst().net());
         assertEquals("0.00", trend.items().get(1).expense());
         assertEquals("2024-02-29", trend.items().getLast().date());
+        assertEquals(1, trend.page());
+        assertEquals(29, trend.totalDays());
+        assertFalse(trend.hasNext());
+        verify(h.store).daily(any(), eq(LocalDate.of(2024, 2, 1)), eq(LocalDate.of(2024, 3, 1)));
+    }
+
+    @Test
+    void customDailyPageZeroFillsOnlyBoundedPageButSummaryUsesWholeRange() {
+        var h = harness();
+        when(h.store.summary(any())).thenReturn(new StatisticsStore.SummaryRow(
+                new BigDecimal("300.00"), new BigDecimal("50.00"), 9));
+        when(h.store.daily(any(), any(), any())).thenReturn(List.of(
+                new StatisticsStore.DailyRow(LocalDate.of(2024, 2, 15), BigDecimal.ZERO, new BigDecimal("7.00"), 1)));
+
+        var summary = h.service.summary(ACTOR, null, null, "2024-01-15", "2024-03-05");
+        var page = h.service.daily(ACTOR, null, null, "2024-01-15", "2024-03-05", "2");
+
+        assertEquals("RANGE", summary.rangeType());
+        assertEquals("2024-01-15", summary.startDate());
+        assertEquals("2024-03-05", summary.endDate());
+        assertEquals("250.00", summary.net());
+        assertEquals(20, page.items().size());
+        assertEquals("2024-02-15", page.items().getFirst().date());
+        assertEquals("7.00", page.items().getFirst().expense());
+        assertEquals("2024-03-05", page.items().getLast().date());
+        assertEquals(51, page.totalDays());
+        assertEquals(2, page.totalPages());
+        assertFalse(page.hasNext());
+        verify(h.store).summary(argThat(period -> period.rangeType() == StatisticsPeriod.RangeType.RANGE));
+        verify(h.store).daily(any(), eq(LocalDate.of(2024, 2, 15)), eq(LocalDate.of(2024, 3, 6)));
+    }
+
+    @Test
+    void crossYearThirtySevenDayRangeSplitsPagesAtTheExactCalendarAnchor() {
+        var h = harness();
+        when(h.store.extent(any())).thenReturn(new StatisticsStore.DateExtent(
+                LocalDate.of(2024, 12, 15), LocalDate.of(2025, 1, 20)));
+        when(h.store.daily(any(), any(), any())).thenReturn(List.of());
+
+        var first = h.service.daily(ACTOR, null, null, "2024-12-15", "2025-01-20", "1");
+        var second = h.service.daily(ACTOR, null, null, "2024-12-15", "2025-01-20", "2");
+
+        assertEquals(37, first.totalDays());
+        assertEquals(2, first.totalPages());
+        assertEquals("2024-12-15", first.items().getFirst().date());
+        assertEquals("2025-01-14", first.items().getLast().date());
+        assertTrue(first.hasNext());
+        assertEquals(6, second.items().size());
+        assertEquals("2025-01-15", second.items().getFirst().date());
+        assertEquals("2025-01-20", second.items().getLast().date());
+        assertFalse(second.hasNext());
+        verify(h.store).daily(any(), eq(LocalDate.of(2024, 12, 15)), eq(LocalDate.of(2025, 1, 15)));
+        verify(h.store).daily(any(), eq(LocalDate.of(2025, 1, 15)), eq(LocalDate.of(2025, 1, 21)));
+    }
+
+    @Test
+    void emptyAllHistoryDailyHasNoDatesOrNextPage() {
+        var h = harness();
+        when(h.store.extent(any())).thenReturn(new StatisticsStore.DateExtent(null, null));
+
+        var trend = h.service.daily(ACTOR, null, "all", null, null, null);
+
+        assertEquals("ALL", trend.rangeType());
+        assertNull(trend.month());
+        assertNull(trend.startDate());
+        assertNull(trend.endDate());
+        assertTrue(trend.items().isEmpty());
+        assertEquals(0, trend.totalDays());
+        assertEquals(0, trend.totalPages());
+        assertFalse(trend.hasNext());
+        verify(h.store, never()).daily(any(), any(), any());
     }
 
     @Test

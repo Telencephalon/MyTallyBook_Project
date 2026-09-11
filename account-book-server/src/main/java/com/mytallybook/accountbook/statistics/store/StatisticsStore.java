@@ -8,13 +8,18 @@ import java.util.List;
 
 public interface StatisticsStore {
     SummaryRow summary(StatisticsPeriod period);
-    List<DailyRow> daily(StatisticsPeriod period);
+    List<DailyRow> daily(StatisticsPeriod period, LocalDate pageStartInclusive, LocalDate pageEndExclusive);
+    default List<DailyRow> daily(StatisticsPeriod period) {
+        return daily(period, period.startInclusive(), period.endExclusive());
+    }
     List<RankingRow> categories(StatisticsPeriod period, String entryType);
     List<AccountRow> accounts(StatisticsPeriod period);
     List<RankingRow> members(StatisticsPeriod period, String entryType);
+    DateExtent extent(StatisticsPeriod period);
 
     record SummaryRow(BigDecimal income, BigDecimal expense, long entryCount) {}
     record DailyRow(LocalDate date, BigDecimal income, BigDecimal expense, long entryCount) {}
     record RankingRow(long id, String name, BigDecimal amount, long entryCount) {}
     record AccountRow(long id, String name, BigDecimal income, BigDecimal expense, long entryCount) {}
+    record DateExtent(LocalDate startDate, LocalDate endDate) {}
 }

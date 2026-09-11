@@ -13,6 +13,7 @@ interface PersistedSession {
   version: 1
   token: string
   expiresAt: string
+  environmentId: string
 }
 
 export class SessionStore {
@@ -25,11 +26,12 @@ export class SessionStore {
   constructor(
     private readonly storage: StorageAdapter,
     private readonly now: () => number = Date.now,
+    private readonly environmentId = 'develop|http://127.0.0.1:7631',
   ) {}
 
   hydrate(): boolean {
     const persisted = this.storage.get(SESSION_STORAGE_KEY)
-    if (!this.isValidPersistedSession(persisted)) {
+    if (!this.isValidPersistedSession(persisted) || persisted.environmentId !== this.environmentId) {
       this.clear()
       return false
     }
@@ -62,6 +64,7 @@ export class SessionStore {
       version: 1,
       token: auth.token,
       expiresAt: auth.expiresAt,
+      environmentId: this.environmentId,
     }
     this.storage.set(SESSION_STORAGE_KEY, persisted)
     ++this.revision
@@ -77,6 +80,10 @@ export class SessionStore {
 
   getToken(): string | null {
     return this.token
+  }
+
+  getEnvironmentId(): string {
+    return this.environmentId
   }
 
   getRevision(): number {
@@ -126,3 +133,7 @@ const wechatStorage: StorageAdapter = {
 }
 
 export const sessionStore = new SessionStore(wechatStorage)
+
+export function createSessionStore(environmentId: string): SessionStore {
+  return new SessionStore(wechatStorage, Date.now, environmentId)
+}

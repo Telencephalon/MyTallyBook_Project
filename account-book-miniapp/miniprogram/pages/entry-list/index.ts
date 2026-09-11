@@ -35,7 +35,15 @@ Page({
   },
 
   async load(includeOptions: boolean) {
-    const generation = ++this._generation; const runtime = getRuntime()
+    const generation = ++this._generation
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      const view = toErrorView(error)
+      this.setData({ loading: false, loadState: 'error', errorMessage: view.message, requestId: view.requestId })
+      return
+    }
     const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
     this.setData({ loading: true, loadState: 'loading', errorMessage: '', requestId: '' })
     try {
@@ -71,6 +79,7 @@ Page({
   },
 
   async onApplyFilters() { this.setData({ page: 1 }); await this.load(false) },
+  async retry() { if (!this.data.loading) await this.load(true) },
   async onClearFilters() {
     this.setData({ dateFrom: '', dateTo: '', entryType: '', categoryId: 0, accountId: 0,
       categoryName: '', accountName: '', createdBy: 0, keyword: '', page: 1 }); await this.load(false)

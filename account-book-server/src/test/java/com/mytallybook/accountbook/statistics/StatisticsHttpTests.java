@@ -49,20 +49,28 @@ class StatisticsHttpTests {
         when(members.readLedger()).thenReturn(Optional.of(ledger));
         when(members.readMembers()).thenReturn(rows);
         when(store.summary(any())).thenReturn(new StatisticsStore.SummaryRow(new BigDecimal("100.30"), new BigDecimal("30.05"), 3));
-        when(store.daily(any())).thenReturn(List.of(new StatisticsStore.DailyRow(LocalDate.of(2024, 9, 1), new BigDecimal("100.30"), new BigDecimal("30.05"), 3)));
+        when(store.daily(any(), any(), any())).thenReturn(List.of(new StatisticsStore.DailyRow(LocalDate.of(2024, 9, 1), new BigDecimal("100.30"), new BigDecimal("30.05"), 3)));
         when(store.categories(any(), any())).thenReturn(List.of(new StatisticsStore.RankingRow(7, "餐饮", new BigDecimal("30.05"), 1)));
         when(store.accounts(any())).thenReturn(List.of(new StatisticsStore.AccountRow(8, "现金", new BigDecimal("100.30"), new BigDecimal("30.05"), 3)));
         when(store.members(any(), any())).thenReturn(List.of(new StatisticsStore.RankingRow(1, "历史成员", new BigDecimal("30.05"), 1)));
+        when(store.extent(any())).thenReturn(new StatisticsStore.DateExtent(LocalDate.of(2024, 1, 5), LocalDate.of(2024, 2, 10)));
     }
 
     @Test
     void fiveExactGetPathsReturnTypedMoneyStrings() throws Exception {
         mvc.perform(get("/api/v1/statistics/monthly-summary?month=2024-09").header("Authorization", "Bearer owner"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.income").value("100.30"))
-                .andExpect(jsonPath("$.data.net").value("70.25")).andExpect(jsonPath("$.data.entryCount").value(3));
+                .andExpect(jsonPath("$.data.net").value("70.25")).andExpect(jsonPath("$.data.entryCount").value(3))
+                .andExpect(jsonPath("$.data.rangeType").value("MONTH"))
+                .andExpect(jsonPath("$.data.startDate").value("2024-09-01"))
+                .andExpect(jsonPath("$.data.endDate").value("2024-09-30"));
         mvc.perform(get("/api/v1/statistics/daily-trend?month=2024-09").header("Authorization", "Bearer owner"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].date").value("2024-09-01"))
-                .andExpect(jsonPath("$.data.items[0].income").value("100.30"));
+                .andExpect(jsonPath("$.data.items[0].income").value("100.30"))
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.pageSize").value(31))
+                .andExpect(jsonPath("$.data.totalDays").value(30))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
         mvc.perform(get("/api/v1/statistics/categories?month=2024-09&entryType=EXPENSE").header("Authorization", "Bearer owner"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value("30.05"))
                 .andExpect(jsonPath("$.data.items[0].percentage").value("100.00"));
@@ -80,6 +88,50 @@ class StatisticsHttpTests {
                 .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/statistics/categories?entryType=expense").header("Authorization", "Bearer owner"))
                 .andExpect(status().isBadRequest());
+        verifyNoInteractions(store);
+    }
+
+    @Test
+    void allAndCustomQueriesReturnTypedPeriodMetadata() throws Exception {
+        mvc.perform(get("/api/v1/statistics/monthly-summary?range=all").header("Authorization", "Bearer owner"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.month").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.data.rangeType").value("ALL"))
+                .andExpect(jsonPath("$.data.startDate").value("2024-01-05"))
+                .andExpect(jsonPath("$.data.endDate").value("2024-02-10"));
+
+        mvc.perform(get("/api/v1/statistics/accounts?startDate=2024-02-29&endDate=2024-03-01").header("Authorization", "Bearer owner"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.month").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.data.rangeType").value("RANGE"))
+                .andExpect(jsonPath("$.data.startDate").value("2024-02-29"))
+                .andExpect(jsonPath("$.data.endDate").value("2024-03-01"));
+
+        mvc.perform(get("/api/v1/statistics/daily-trend?startDate=2024-01-15&endDate=2024-03-05&page=2")
+                        .header("Authorization", "Bearer owner"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rangeType").value("RANGE"))
+                .andExpect(jsonPath("$.data.page").value(2))
+                .andExpect(jsonPath("$.data.totalDays").value(51))
+                .andExpect(jsonPath("$.data.totalPages").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    void invalidRangeAndPageInputsAreRejectedBeforeAggregation() throws Exception {
+        clearInvocations(store);
+
+        mvc.perform(get("/api/v1/statistics/monthly-summary?month=2024-09&range=all").header("Authorization", "Bearer owner"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/statistics/monthly-summary?startDate=2024-02-29").header("Authorization", "Bearer owner"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/statistics/daily-trend?range=all&page=0").header("Authorization", "Bearer owner"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/statistics/daily-trend?range=all&page=+1").header("Authorization", "Bearer owner"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/statistics/daily-trend?range=all&page=2147483648").header("Authorization", "Bearer owner"))
+                .andExpect(status().isBadRequest());
+
         verifyNoInteractions(store);
     }
 

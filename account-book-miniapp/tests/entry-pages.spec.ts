@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { EntryCreateIntent } from '../miniprogram/flows/entry-flow'
 import { shanghaiToday } from '../miniprogram/utils/bookkeeping'
 import { AppError } from '../miniprogram/types/error'
@@ -75,6 +76,27 @@ async function loadPage(name: PageName, runtime: ReturnType<typeof runtimeFor>, 
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('entry create page', () => {
+  it('renders runtime configuration failures at page entry without throwing', async () => {
+    let definition: PageShape | undefined
+    const request = vi.fn()
+    vi.stubGlobal('Page', (value: PageShape) => { definition = value })
+    vi.stubGlobal('wx', { request, redirectTo: vi.fn(), navigateBack: vi.fn() })
+    vi.doMock('../miniprogram/runtime', () => ({
+      getRuntime: () => { throw new AppError('CONFIG', 'API_DOMAIN_INVALID', 'API 地址必须是备案后的 HTTPS 域名') },
+    }))
+    await import('../miniprogram/pages/entry-create/index')
+    const page = {
+      ...definition!, data: structuredClone(definition!.data),
+      setData(this: PageShape, update: object) { Object.assign(this.data, update) },
+    } as PageShape
+
+    expect(() => page.onLoad()).not.toThrow()
+    await page.onShow()
+
+    expect(page.data.errorMessage).toBe('API 地址必须是备案后的 HTTPS 域名')
+    expect(request).not.toHaveBeenCalled()
+  })
+
   it('defaults the business date in Asia/Shanghai rather than UTC', () => {
     expect(shanghaiToday(Date.parse('2026-09-05T16:30:00Z'))).toBe('2026-09-06')
   })
@@ -87,6 +109,29 @@ describe('entry create page', () => {
     expect(page.data).toMatchObject({ categoryName: '餐饮', accountName: '现金' })
     expect(runtime.catalog.categories).toHaveBeenCalledWith('EXPENSE', 'ACTIVE')
     expect(runtime.catalog.accounts).toHaveBeenCalledWith('ACTIVE')
+  })
+
+  it('retries failed dictionaries independently while preserving the create draft', async () => {
+    const runtime = runtimeFor()
+    runtime.catalog.categories.mockRejectedValueOnce(new Error('categories offline'))
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad(); await page.onShow()
+    page.onAmountInput({ detail: { value: '8.80' } })
+    page.onNoteInput({ detail: { value: '保留备注' } })
+    page.onDateChange({ detail: { value: '2026-09-10' } })
+
+    expect(page.data.canRetryRead).toBe(true)
+    await page.retryDictionaries()
+
+    expect(runtime.catalog.categories).toHaveBeenCalledTimes(2)
+    expect(runtime.catalog.accounts).toHaveBeenCalledTimes(2)
+    expect(runtime.entries.create).not.toHaveBeenCalled()
+    expect(page.data).toMatchObject({
+      amount: '8.80',
+      note: '保留备注',
+      entryDate: '2026-09-10',
+      canRetryRead: false,
+    })
   })
 
   it('retains exact edits and offers manual retry after an unknown result', async () => {
@@ -106,6 +151,28 @@ describe('entry create page', () => {
 
     expect(runtime.entries.create.mock.calls[1][0]).toEqual(runtime.entries.create.mock.calls[0][0])
     expect(wx.redirectTo).toHaveBeenCalledWith({ url: '/pages/entry-detail/index?id=40' })
+  })
+
+  it('preserves the complete create form after a direct network failure', async () => {
+    const runtime = runtimeFor()
+    const { AppError: RuntimeAppError } = await import('../miniprogram/types/error')
+    runtime.entries.create.mockRejectedValueOnce(new RuntimeAppError('NETWORK', 'NETWORK_ERROR', '网络连接失败', 'req-create-network'))
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad(); await page.onShow()
+    page.onAmountInput({ detail: { value: '3.40' } })
+    page.onNoteInput({ detail: { value: '原样备注' } })
+    page.onCategoryChange({ detail: { value: '0' } })
+    page.onAccountChange({ detail: { value: '0' } })
+    page.onDateChange({ detail: { value: '2026-09-09' } })
+    const before = { amount: page.data.amount, note: page.data.note, categoryId: page.data.categoryId,
+      accountId: page.data.accountId, entryDate: page.data.entryDate }
+
+    await page.onSubmit()
+
+    expect(page.data).toMatchObject({ ...before, busy: false, canRetry: true })
+    expect(page.data.errorMessage).not.toBe('')
+    expect(page.data.requestId).toBe('req-create-network')
+    expect(runtime.entries.create).toHaveBeenCalledTimes(1)
   })
 
   it('prompts before abandoning an unknown result and creates no persistent draft', async () => {
@@ -260,6 +327,57 @@ describe('entry create page', () => {
 })
 
 describe('entry list/detail/edit pages', () => {
+  it('entry-list exposes a read retry after a failed load', async () => {
+    const runtime = runtimeFor()
+    runtime.entries.list.mockRejectedValueOnce(new Error('offline'))
+    const page = await loadPage('entry-list', runtime)
+
+    await page.onShow()
+
+    expect(page.data.loadState).toBe('error')
+    expect(typeof page.retry).toBe('function')
+    const wxml = readFileSync(new URL('../miniprogram/pages/entry-list/index.wxml', import.meta.url), 'utf8')
+    expect(wxml).toContain('bindtap="retry"')
+    await page.retry()
+    expect(runtime.entries.list).toHaveBeenCalledTimes(2)
+  })
+
+  it('entry-detail exposes a read retry after a failed load', async () => {
+    const runtime = runtimeFor()
+    runtime.entries.detail.mockRejectedValueOnce(new Error('offline'))
+    const page = await loadPage('entry-detail', runtime)
+    page.onLoad({ id: '40' })
+
+    await page.onShow()
+
+    expect(page.data.errorMessage).not.toBe('')
+    expect(typeof page.onRetry).toBe('function')
+    const wxml = readFileSync(new URL('../miniprogram/pages/entry-detail/index.wxml', import.meta.url), 'utf8')
+    expect(wxml).toContain('bindtap="onRetry"')
+    await page.onRetry()
+    expect(runtime.entries.detail).toHaveBeenCalledTimes(2)
+  })
+
+  it('renders runtime configuration failures from the edit entry boundary', async () => {
+    let definition: PageShape | undefined
+    const request = vi.fn()
+    vi.stubGlobal('Page', (value: PageShape) => { definition = value })
+    vi.stubGlobal('wx', { request, redirectTo: vi.fn(), navigateBack: vi.fn(), showModal: vi.fn() })
+    vi.doMock('../miniprogram/runtime', () => ({
+      getRuntime: () => { throw new AppError('CONFIG', 'API_DOMAIN_INVALID', 'API 地址必须是备案后的 HTTPS 域名') },
+    }))
+    await import('../miniprogram/pages/entry-edit/index')
+    const page = {
+      ...definition!, data: structuredClone(definition!.data),
+      setData(this: PageShape, update: object) { Object.assign(this.data, update) },
+    } as PageShape
+
+    page.onLoad({ id: '40' })
+    await expect(page.onShow()).resolves.toBeUndefined()
+    expect(page.data.errorMessage).toBe('操作失败，请稍后重试')
+    expect(request).not.toHaveBeenCalled()
+  })
+
   it('list applies every filter, resets pagination, and loads historical creators', async () => {
     const runtime = runtimeFor()
     const page = await loadPage('entry-list', runtime)
@@ -323,6 +441,28 @@ describe('entry list/detail/edit pages', () => {
     expect(page.data.busy).toBe(false)
   })
 
+  it('entry-detail keeps a hidden pending deletion locked until it settles', async () => {
+    const pendingDelete = deferred<void>()
+    const runtime = runtimeFor()
+    runtime.entries.remove.mockReturnValueOnce(pendingDelete.promise)
+    const page = await loadPage('entry-detail', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+
+    const pending = page.onDelete()
+    await Promise.resolve()
+    page.onHide()
+    await page.onShow()
+    await page.onDelete()
+
+    expect(runtime.entries.remove).toHaveBeenCalledTimes(1)
+    expect(page.data.busy).toBe(true)
+    pendingDelete.resolve()
+    await pending
+
+    expect(page.data.busy).toBe(false)
+    expect(wx.navigateTo).not.toHaveBeenCalled()
+  })
+
   it('edit retains local values on conflict and reloads only after confirmation', async () => {
     const runtime = runtimeFor()
     runtime.entries.detail.mockResolvedValueOnce(entry).mockResolvedValueOnce({ ...entry, amount: '4.20', version: 3 })
@@ -335,6 +475,52 @@ describe('entry list/detail/edit pages', () => {
     await page.onReload()
     expect(page.data.amount).toBe('4.20')
     expect(page.data.version).toBe(3)
+  })
+
+  it('preserves the complete edit form after a direct network failure', async () => {
+    const runtime = runtimeFor()
+    const { AppError: RuntimeAppError } = await import('../miniprogram/types/error')
+    runtime.entries.update.mockRejectedValueOnce(new RuntimeAppError('NETWORK', 'NETWORK_ERROR', '网络连接失败', 'req-edit-network'))
+    const page = await loadPage('entry-edit', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onAmountInput({ detail: { value: '9.99' } })
+    page.onNoteInput({ detail: { value: '修改备注' } })
+    page.onCategoryChange({ detail: { value: '0' } })
+    page.onAccountChange({ detail: { value: '0' } })
+    page.onDateChange({ detail: { value: '2026-09-09' } })
+    const before = { amount: page.data.amount, note: page.data.note, categoryId: page.data.categoryId,
+      accountId: page.data.accountId, entryDate: page.data.entryDate }
+
+    await page.onSubmit()
+
+    expect(page.data).toMatchObject({ ...before, busy: false, canReload: false })
+    expect(page.data.errorMessage).not.toBe('')
+    expect(page.data.requestId).toBe('req-edit-network')
+    expect(runtime.entries.update).toHaveBeenCalledTimes(1)
+    expect(wx.redirectTo).not.toHaveBeenCalled()
+  })
+
+  it('entry-edit keeps a hidden pending save locked until it settles', async () => {
+    const pendingUpdate = deferred<typeof entry>()
+    const runtime = runtimeFor()
+    runtime.entries.update.mockReturnValueOnce(pendingUpdate.promise)
+    const page = await loadPage('entry-edit', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onAmountInput({ detail: { value: '9.99' } })
+
+    const pending = page.onSubmit()
+    await Promise.resolve()
+    page.onHide()
+    await page.onShow()
+    await page.onSubmit()
+
+    expect(runtime.entries.update).toHaveBeenCalledTimes(1)
+    expect(page.data.busy).toBe(true)
+    pendingUpdate.resolve(entry)
+    await pending
+
+    expect(page.data.busy).toBe(false)
+    expect(wx.redirectTo).not.toHaveBeenCalled()
   })
 
   it('edit preserves the conflict message and reload action across hide/show', async () => {

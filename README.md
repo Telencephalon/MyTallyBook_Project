@@ -4,6 +4,10 @@
 
 ## 当前状态
 
+> 2026-09-10 Task 10 子任务 5（隐私文案、静态路由与配置文档审计）已在主目录完成离线审计：`app.json` 当前注册 20 页、原生 `ts/wxml/wxss/json` 四件套齐全，底部导航为 `首页/明细/统计/我的` 四栏；新增的真实 Page handler 与配置断言覆盖 Home 的明细/统计入口、Settings 栈链接、Profile 成功保存返回、EntryDetail 授权删除后切换明细 tab，以及 tab 元数据与 `TAB_ROUTES` 一致性。Focused audit 为 6 个 suite、72/72 通过；完整真机、备案、临时域名、TLS、微信合法域名和 Task 11/12 仍未完成。隐私清单仅记录代码实际使用：`wx.login`、`wx.getAccountInfoSync`、`wx.request`、会话 Storage、显式剪贴板写入和分享；无剪贴板读取、位置、相册、摄像头、麦克风、手机号或通讯录调用。`config/env.ts:3` 的 trial/release 地址仍为空，`config/app-info.ts:14-18` 的运营方/联系方式/备案号仍待配置，未写入任何真实秘密。详见 [Task 5 子任务报告](.superpowers/sdd/2026-09-09-task10-interaction-privacy-device-implementation/task-5-report.md)。
+
+> 2026-09-09 用户验收回执：Task 9 已由用户启动并验证成功；上一条启动锁暂停点不再作为当前阻塞。此回执记为用户实际操作验收，不替代尚未执行的统计专项真实 MySQL/人工 SQL 对照。本轮开始 Task 10 交互、隐私和真机质量的范围梳理；真机为 Mate 70 Pro 与 iPhone 15，操作系统及微信版本待测试时登记。正式域名备案未完成，临时域名也尚未提供；仅预留集中配置，未更改公网端口、部署服务器或上传小程序。详见 [Task 10 准备记录](docs/20-交互隐私真机与后续部署准备记录.md)。
+
 > 2026-09-08 当前进度：只在主目录 `D:\Work\Workplaces\privateWork\AAProject\MyTallyBook_Project` 编辑、测试和运行，旧隔离目录仅保留历史归档。Task 9 首页与统计代码、两级独立复核完成：后端 344 项通过/26 门禁跳过，小程序 244 项、两套类型检查与 17 页原生 WXML 编译通过。已授权的后端更新在启动互斥锁阶段被旧启动窗口拦住，尚未停止旧服务或替换 JAR；需先解除旧管理员 PowerShell 的“选择”状态后继续检查。真实 MySQL 统计专项与人工验收未完成。详见 [Task 8/9 实施记录](docs/18-收支记账与首页统计实施记录.md)。
 
 > 2026-09-08 运行目录切换：Task 1–8 已交付的代码已归并到 `D:\Work\Workplaces\privateWork\AAProject\MyTallyBook_Project`，主目录后端已启动并健康 UP。Task 9 尚未开发；下方带日期内容保留为历史。日常只使用本页主目录启动命令，切勿同时运行旧 worktree 后端。详见 [归并记录](docs/19-主目录归并与运行目录切换记录.md)。

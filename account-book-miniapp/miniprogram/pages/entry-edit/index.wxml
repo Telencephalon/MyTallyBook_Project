@@ -1,14 +1,14 @@
 <view class="page">
-  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}<button wx:if="{{canReload}}" bindtap="onReload">确认重新加载</button></view>
+  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button><button wx:if="{{canReload}}" disabled="{{loading || busy}}" bindtap="onReload">确认重新加载</button></view>
   <view class="card form">
-    <text>收支类型</text><picker disabled="{{!canEdit || loading || busy || canReload}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
-    <text>金额</text><input disabled="{{!canEdit || loading || busy || canReload}}" type="digit" value="{{amount}}" bindinput="onAmountInput"/>
-    <text>分类</text><picker disabled="{{!canEdit || loading || busy || canReload}}" range="{{categoryOptions}}" range-key="name" bindchange="onCategoryChange"><view>{{selectedCategoryName || '请选择分类'}}</view></picker>
+    <text>收支类型</text><picker disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
+    <text>金额</text><input disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" type="digit" value="{{amount}}" bindinput="onAmountInput"/>
+    <text>分类</text><picker disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" range="{{categoryOptions}}" range-key="name" bindchange="onCategoryChange"><view>{{selectedCategoryName || '请选择分类'}}</view></picker>
     <text wx:if="{{categoryOptions.length && categoryOptions[categoryOptions.length-1].original}}">原分类已停用，仅本账单可保留</text>
-    <text>账户</text><picker disabled="{{!canEdit || loading || busy || canReload}}" range="{{accountOptions}}" range-key="name" bindchange="onAccountChange"><view>{{selectedAccountName || '请选择账户'}}</view></picker>
+    <text>账户</text><picker disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" range="{{accountOptions}}" range-key="name" bindchange="onAccountChange"><view>{{selectedAccountName || '请选择账户'}}</view></picker>
     <text wx:if="{{accountOptions.length && accountOptions[accountOptions.length-1].original}}">原账户已停用，仅本账单可保留</text>
-    <text>日期</text><picker disabled="{{!canEdit || loading || busy || canReload}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view>{{entryDate}}</view></picker>
-    <text>备注</text><textarea disabled="{{!canEdit || loading || busy || canReload}}" maxlength="500" value="{{note}}" bindinput="onNoteInput"/>
+    <text>日期</text><picker disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view>{{entryDate}}</view></picker>
+    <text>备注</text><textarea disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" maxlength="500" value="{{note}}" bindinput="onNoteInput"/>
     <text wx:if="{{!canEdit}}">当前账单不可编辑</text>
     <button wx:if="{{canEdit}}" class="button button-primary" loading="{{busy}}" disabled="{{loading || busy || canReload}}" bindtap="onSubmit">保存修改</button>
   </view>

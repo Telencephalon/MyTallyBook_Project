@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}</view>
+  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetry}}" size="mini" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="onRetry">重新加载</button></view>
   <view class="card detail" wx:if="{{entry}}">
     <text>{{entry.entryType === 'INCOME' ? '收入' : '支出'}} {{entry.amount}}</text>
     <text>日期：{{entry.entryDate}}</text><text>分类：{{entry.categoryName}}{{entry.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text>

@@ -10,6 +10,8 @@ Page({
   },
   _alive: true,
   _generation: 0,
+  _loadGeneration: -1,
+  _mutationOperation: 0,
   _identity: '',
   identity() {
     const session = getRuntime().session
@@ -18,28 +20,44 @@ Page({
   async onShow() {
     this._alive = true
     ++this._generation
+    this.setData({ loading: false })
     await this.loadMembers()
   },
   onUnload() { this._alive = false; ++this._generation },
   async loadMembers() {
-    if (this.data.loading) return
+    const generation = this._generation
+    if (this.data.loading && this._loadGeneration === generation) return
+    this._loadGeneration = generation
+    let runtime: ReturnType<typeof getRuntime>
+    try {
+      runtime = getRuntime()
+    } catch (error) {
+      this.showError(error, () => this._alive && generation === this._generation)
+      return
+    }
+    const revision = runtime.session.getRevision()
+    const initialIdentity = this.identity()
+    const current = () => this._alive && generation === this._generation
+      && revision === runtime.session.getRevision()
+      && initialIdentity === this.identity()
     this.setData({ loading: true, canLeave: false, errorMessage: '', requestId: '' })
     try {
-      await getRuntime().flow.refreshContext()
+      await runtime.flow.refreshContext()
+      if (!current()) return
       const identity = this.identity()
-      const result = await getRuntime().members.list()
-      if (!this._alive || !identity || identity !== this.identity()) return
+      const result = await runtime.members.list()
+      if (!current() || !identity) return
       this._identity = identity
       this.setData({
         items: result.items.map(item => ({ ...item, name: item.displayName?.trim() || item.nickname, roleLabel: roleLabel(item.role) })),
         activeCount: result.activeCount, maxMembers: result.maxMembers,
         canLeave: getRuntime().session.getUser()?.role !== 'OWNER',
       })
-    } catch (error) { this.showError(error) }
-    finally { if (this._alive) this.setData({ loading: false }) }
+    } catch (error) { this.showError(error, current) }
+    finally { if (current()) this.setData({ loading: false }) }
   },
-  showError(error: unknown) {
-    if (!this._alive) return
+  showError(error: unknown, current: () => boolean = () => this._alive) {
+    if (!current()) return
     const view = toErrorView(error)
     this.setData({ errorMessage: view.message, requestId: view.requestId })
   },
@@ -55,6 +73,7 @@ Page({
     const identity = this.identity()
     const revision = runtime.session.getRevision()
     const generation = this._generation
+    const operation = ++this._mutationOperation
     const memberId = user.memberId
     this.setData({ busy: true, errorMessage: '', requestId: '' })
     try {
@@ -67,7 +86,14 @@ Page({
         || runtime.session.getUser()?.role === 'OWNER') return
       await runtime.members.remove(memberId)
       if (this._alive && !runtime.session.getToken()) wx.reLaunch({ url: '/pages/login/index' })
-    } catch (error) { this.showError(error) }
-    finally { if (this._alive) this.setData({ busy: false }) }
+    } catch (error) {
+      const current = () => this._alive && generation === this._generation
+        && identity === this.identity() && revision === runtime.session.getRevision()
+        && operation === this._mutationOperation
+      this.showError(error, current)
+    }
+    finally {
+      if (operation === this._mutationOperation) this.setData({ busy: false })
+    }
   },
 })
