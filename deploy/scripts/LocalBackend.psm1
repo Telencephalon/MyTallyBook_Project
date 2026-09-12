@@ -12,6 +12,7 @@ $script:MigrationHashes = @{
     'V1__init_schema.sql' = '2790a69c5847e92fe6510255491723b750b31796d426884671e695659ac0a769'
 	'V2__align_approved_design.sql' = '9a69661dcec91a27b6a631a64d29217ed894c68cc8bb9622795806c82bc49ad8'
 	'V3__add_entry_person_name.sql' = 'e554504431fce289375b90a0d7e3e22d8f9b085e518d0ac25ad2db6432cfa4c7'
+	'V4__allow_shared_category_type.sql' = 'c8d925426cd54e7c751f0571638e1263fdafdf3818bfce816ce45e3f4efed86b'
 }
 
 function Get-OwnedKeyPath([string]$RepoRoot) {
@@ -185,7 +186,7 @@ function New-LocalBackendStartInfo {
             DB_USERNAME = 'account_book_dev_app'
             WECHAT_APP_ID = (Get-LocalBackendAppId -RepoRoot $root)
             SPRING_FLYWAY_ENABLED = 'true'; SPRING_FLYWAY_VALIDATE_ON_MIGRATE = 'true'
-			SPRING_FLYWAY_TARGET = '3'; SPRING_FLYWAY_CLEAN_DISABLED = 'true'
+			SPRING_FLYWAY_TARGET = '4'; SPRING_FLYWAY_CLEAN_DISABLED = 'true'
             SPRING_FLYWAY_BASELINE_ON_MIGRATE = 'false'; SPRING_JPA_HIBERNATE_DDL_AUTO = 'validate'
         }
         foreach ($name in $fixed.Keys) { $info.EnvironmentVariables[$name] = $fixed[$name] }
@@ -200,9 +201,9 @@ function New-LocalBackendStartInfo {
     }
 }
 
-function Assert-LocalBackendMigrations {
+function Assert-LocalBackendSourceMigrations {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$JarPath)
+    param([Parameter(Mandatory)][string]$RepoRoot)
     $directory = Join-Path $RepoRoot 'account-book-server/src/main/resources/db/migration'
     $files = @(Get-ChildItem -LiteralPath $directory -File -Recurse -Force)
 	if ($files.Count -ne $script:MigrationHashes.Count) { throw 'SourceMigrationInventoryRejected' }
@@ -216,6 +217,12 @@ function Assert-LocalBackendMigrations {
         } finally { $stream.Dispose() }
         if ($hash -ne $script:MigrationHashes[$file.Name]) { throw 'SourceMigrationHashRejected' }
     }
+}
+
+function Assert-LocalBackendMigrations {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$JarPath)
+    Assert-LocalBackendSourceMigrations -RepoRoot $RepoRoot
     $archive = [IO.Compression.ZipFile]::OpenRead($JarPath)
     try {
         $entries = @($archive.Entries | Where-Object { $_.FullName -match '(^|/)db/migration/.+' -and -not $_.FullName.EndsWith('/') })
@@ -288,4 +295,4 @@ function Assert-LocalBackendPreflight {
     Assert-LocalBackendPorts
 }
 
-Export-ModuleMember -Function Initialize-LocalBackendKeys, Get-LocalBackendKeys, Get-LocalBackendAppId, New-LocalBackendStartInfo, Assert-LocalBackendMigrations, Assert-LocalBackendListeners, Assert-LocalBackendPorts, Assert-LocalBackendArtifacts, Assert-LocalBackendPreflight
+Export-ModuleMember -Function Initialize-LocalBackendKeys, Get-LocalBackendKeys, Get-LocalBackendAppId, New-LocalBackendStartInfo, Assert-LocalBackendSourceMigrations, Assert-LocalBackendMigrations, Assert-LocalBackendListeners, Assert-LocalBackendPorts, Assert-LocalBackendArtifacts, Assert-LocalBackendPreflight

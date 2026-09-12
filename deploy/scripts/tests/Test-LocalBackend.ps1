@@ -124,6 +124,7 @@ function New-MigrationFixture {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'account-book-server/src/main/resources/db/migration/V1__init_schema.sql') -Destination $directory
 	Copy-Item -LiteralPath (Join-Path $repoRoot 'account-book-server/src/main/resources/db/migration/V2__align_approved_design.sql') -Destination $directory
 	Copy-Item -LiteralPath (Join-Path $repoRoot 'account-book-server/src/main/resources/db/migration/V3__add_entry_person_name.sql') -Destination $directory
+	Copy-Item -LiteralPath (Join-Path $repoRoot 'account-book-server/src/main/resources/db/migration/V4__allow_shared_category_type.sql') -Destination $directory
     return $root
 }
 function Write-TestJar([string]$Root, [string]$Omit = '', [string]$Change = '', [string]$Extra = '') {
@@ -132,7 +133,7 @@ function Write-TestJar([string]$Root, [string]$Omit = '', [string]$Change = '', 
     $path = Join-Path $target 'account-book-server-0.0.1-SNAPSHOT.jar'
     $archive = [IO.Compression.ZipFile]::Open($path, [IO.Compression.ZipArchiveMode]::Create)
     try {
-		foreach ($name in @('V1__init_schema.sql', 'V2__align_approved_design.sql', 'V3__add_entry_person_name.sql', $Extra)) {
+		foreach ($name in @('V1__init_schema.sql', 'V2__align_approved_design.sql', 'V3__add_entry_person_name.sql', 'V4__allow_shared_category_type.sql', $Extra)) {
             if (-not $name -or $name -eq $Omit) { continue }
             $entry = $archive.CreateEntry('BOOT-INF/classes/db/migration/' + $name)
             $stream = $entry.Open()
@@ -328,7 +329,7 @@ try {
                 SPRING_CONFIG_LOCATION = 'classpath:/application.yml'; SPRING_PROFILES_ACTIVE = 'local'
                 SERVER_ADDRESS = '127.0.0.1'; SERVER_PORT = '7631'
                 SPRING_FLYWAY_ENABLED = 'true'; SPRING_FLYWAY_VALIDATE_ON_MIGRATE = 'true'
-				SPRING_FLYWAY_TARGET = '3'; SPRING_FLYWAY_CLEAN_DISABLED = 'true'
+				SPRING_FLYWAY_TARGET = '4'; SPRING_FLYWAY_CLEAN_DISABLED = 'true'
                 SPRING_FLYWAY_BASELINE_ON_MIGRATE = 'false'; SPRING_JPA_HIBERNATE_DDL_AUTO = 'validate'
             }
             foreach ($name in $expected.Keys) { Assert-True ($info.EnvironmentVariables[$name] -ceq $expected[$name]) ('Incorrect child setting: ' + $name) }

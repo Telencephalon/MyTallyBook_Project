@@ -78,7 +78,6 @@ function Assert-DevStartupFiles([string]$RepoRoot) {
     }
     foreach ($path in @(
         'D:/Work/Config/JDK/JDK/jdk21/bin/java.exe',
-        (Join-Path $RepoRoot 'account-book-server/target/account-book-server-0.0.1-SNAPSHOT.jar'),
         (Join-Path $RepoRoot 'deploy/scripts/Start-LocalBackend.ps1'),
         (Join-Path $env:SystemRoot 'System32/OpenSSH/ssh.exe'),
         (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe')
@@ -127,7 +126,10 @@ function Assert-DevMavenWrapperCached([string]$RepoRoot) {
 }
 
 function Assert-DevUpdatePreflight([string]$RepoRoot) {
-    Assert-LocalBackendArtifacts -RepoRoot $RepoRoot -RequireJar
+    # The previous JAR may be an incomplete Maven repackage output. Validate
+    # source independently so the update command can repair that artifact.
+    Assert-LocalBackendArtifacts -RepoRoot $RepoRoot
+    Assert-LocalBackendSourceMigrations -RepoRoot $RepoRoot
     foreach ($relative in @(
         'secrets/local-dev/keys.dpapi',
         'secrets/local-dev/credentials.dpapi',
@@ -140,6 +142,7 @@ function Assert-DevUpdatePreflight([string]$RepoRoot) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw 'UpdatePreflightFailed' }
     }
     Assert-DevSafePath -Path (Join-Path $RepoRoot 'backup/local-backend') -RepoRoot $RepoRoot
+    Assert-DevSafePath -Path (Join-Path $RepoRoot 'account-book-server/target/account-book-server-0.0.1-SNAPSHOT.jar') -RepoRoot $RepoRoot
     & git -C $RepoRoot check-ignore --quiet --no-index -- 'backup/local-backend/probe.jar' 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'UpdatePreflightFailed' }
     Assert-DevMavenWrapperCached $RepoRoot
@@ -232,11 +235,37 @@ function Assert-DevPackagedBackend([string]$RepoRoot) {
         try {
             $names = @($archive.Entries | Select-Object -ExpandProperty FullName)
             foreach ($name in @(
+                'org/springframework/boot/loader/launch/JarLauncher.class',
+                'BOOT-INF/classes/com/mytallybook/accountbook/AccountBookServerApplication.class',
                 'BOOT-INF/classes/com/mytallybook/accountbook/member/MemberController.class',
                 'BOOT-INF/classes/com/mytallybook/accountbook/invite/InviteController.class'
             )) { if ($names -cnotcontains $name) { throw 'PackagedBackendRejected' } }
+            if (@($names | Where-Object { $_ -clike 'BOOT-INF/lib/*.jar' }).Count -eq 0) { throw 'PackagedBackendRejected' }
         } finally { $archive.Dispose() }
     } catch { throw 'PackagedBackendRejected' }
+}
+
+function Repair-DevBackendArtifact([string]$RepoRoot) {
+    Assert-LocalBackendArtifacts -RepoRoot $RepoRoot
+    Assert-LocalBackendSourceMigrations -RepoRoot $RepoRoot
+    try { Assert-DevPackagedBackend $RepoRoot; return }
+    catch { if ($_.Exception.Message -cne 'PackagedBackendRejected') { throw } }
+
+    Write-Host 'Backend JAR is missing or incomplete. Checking prerequisites for one offline rebuild before opening service consoles.'
+    Assert-DevUpdatePreflight $RepoRoot
+    $state = Get-DevServiceState $RepoRoot
+    if ($state.BackendPresent -or $state.PendingBackend) { throw 'BackendStartupPending' }
+    $jar = Join-Path $RepoRoot 'account-book-server/target/account-book-server-0.0.1-SNAPSHOT.jar'
+    if (Test-Path -LiteralPath $jar -PathType Leaf) {
+        $backup = New-DevBackendBackup $RepoRoot
+        Write-Host ('Previous artifact retained for diagnosis: ' + $backup)
+    }
+    # Recheck immediately before Maven: never package over a running Java JAR.
+    $state = Get-DevServiceState $RepoRoot
+    if ($state.BackendPresent -or $state.PendingBackend) { throw 'BackendStartupPending' }
+    Invoke-DevBackendPackage $RepoRoot
+    Assert-DevPackagedBackend $RepoRoot
+    Write-Host 'Backend JAR rebuilt and validated.'
 }
 
 function Stop-DevBackend($Process, [string]$RepoRoot, [int]$TimeoutSeconds) {
@@ -307,7 +336,11 @@ function Invoke-DevStartup {
         $backupPath = $null
         if ($UpdateBackend) {
             Assert-DevUpdatePreflight $root
-            $backupPath = New-DevBackendBackup $root
+            if (Test-Path -LiteralPath (Join-Path $root 'account-book-server/target/account-book-server-0.0.1-SNAPSHOT.jar') -PathType Leaf) {
+                $backupPath = New-DevBackendBackup $root
+            }
+        } elseif (-not $state.BackendPresent) {
+            Repair-DevBackendArtifact $root
         }
         try {
         $tunnelResult = 'Reused'

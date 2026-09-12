@@ -18,7 +18,7 @@ Page({
     dateFrom: '', dateTo: '', entryType: '' as '' | EntryType, categoryId: 0, accountId: 0,
     categoryName: '', accountName: '',
     createdBy: 0, keyword: '', page: 1, pageSize: 20, total: 0,
-    loading: false, loadState: 'loading' as LoadState, errorMessage: '', requestId: '',
+    loading: false, loadState: 'loading' as LoadState, errorMessage: '', requestId: '', filtersExpanded: false,
   },
   _active: true, _generation: 0,
   async onShow() {
@@ -29,6 +29,7 @@ Page({
   },
   onHide() { this._active = false; ++this._generation; this.setData({ loading: false }) },
   onUnload() { this._active = false; ++this._generation; this.setData({ loading: false }) },
+  toggleFilters() { this.setData({ filtersExpanded: !this.data.filtersExpanded }) },
 
   filters() {
     return {

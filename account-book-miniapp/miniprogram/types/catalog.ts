@@ -1,5 +1,5 @@
 export type ResourceStatus = 'ACTIVE' | 'DISABLED';
-export type EntryType = 'INCOME' | 'EXPENSE';
+export type EntryType = 'INCOME' | 'EXPENSE' | 'BOTH';
 export type AccountType = 'CASH' | 'WECHAT' | 'BANK' | 'ALIPAY' | 'OTHER';
 export interface Category {
     id: number;
@@ -32,7 +32,7 @@ export interface CreateCategory {
     sortNo: number;
     status: ResourceStatus;
 }
-export type UpdateCategory = Omit<CreateCategory, 'entryType'>;
+export type UpdateCategory = Omit<CreateCategory, 'entryType'> & { entryType?: EntryType };
 export interface CreateAccount {
     name: string;
     accountType: AccountType;
@@ -46,4 +46,3 @@ export interface UpdateAccount {
     status: ResourceStatus;
     version: number;
 }
-

@@ -38,7 +38,7 @@ function New-State {
         HealthCode = 200; HealthContent = '{"status":"UP"}'; HealthThrows = $false
         HealthRequiresTunnel = $false; HealthReadyAt = 0
         TunnelLostAt = [int]::MaxValue; BackendLostAt = [int]::MaxValue
-        MissingPath = ''; Failure = $null; Result = $null
+        MissingPath = ''; Failure = $null; Result = $null; ArtifactFailure = ''
         Launches = [Collections.Generic.List[object]]::new()
         Events = [Collections.Generic.List[string]]::new()
         Messages = [Collections.Generic.List[string]]::new()
@@ -104,6 +104,11 @@ function Invoke-Fixture($State) {
             if ($kind -eq 'ssh') { $testState.StartedSsh = $true } else { $testState.StartedBackend = $true }
         }
         function Write-Host { param($Object) $testState.Messages.Add([string]$Object) }
+        function Repair-DevBackendArtifact {
+            param($RepoRoot)
+            $testState.Events.Add('prepare-artifact')
+            if ($testState.ArtifactFailure) { throw $testState.ArtifactFailure }
+        }
         $testState = $State
         try { $State.Result = Invoke-DevStartup -RepoRoot $State.Root -TunnelTimeoutSeconds 3 -BackendTimeoutSeconds 3 }
         catch { $State.Failure = $_.Exception.Message }
@@ -119,7 +124,15 @@ Test-Case 'cold startup opens SSH then backend only after tunnel readiness' {
     $state = Invoke-Fixture (New-State)
     Assert-True ($null -eq $state.Failure) ('Cold startup rejected: ' + $state.Failure)
     Assert-True (($state.Launches.Kind -join ',') -ceq 'ssh,backend') 'Launch order was not SSH then backend.'
+    Assert-True ($state.Events.IndexOf('prepare-artifact') -lt $state.Events.IndexOf('launch-ssh')) 'Artifact preparation happened after opening SSH.'
     Assert-True ($state.Elapsed -ge 2000 -and $state.Result.Backend -ceq 'Started' -and $state.Result.Tunnel -ceq 'Started') 'Startup did not wait for both services.'
+}
+Test-Case 'artifact failure is reported before any console opens or health timeout' {
+    $state = New-State
+    $state.ArtifactFailure = 'BackendPackageFailed'
+    $null = Invoke-Fixture $state
+    Assert-Failure $state 'BackendPackageFailed'
+    Assert-True ($state.Launches.Count -eq 0 -and $state.Elapsed -eq 0) 'Invalid JAR caused a misleading health wait.'
 }
 Test-Case 'known healthy services are reused without a child launch' {
     $state = New-State
@@ -352,6 +365,7 @@ Import-Module $ModulePath -Force -DisableNameChecking
         throw 'OfflineEndPasswordWait'
     }
     function Invoke-WebRequest { throw 'OfflineUnexpectedHealthRequest' }
+    function Repair-DevBackendArtifact { param($RepoRoot) }
     function Write-Host { param($Object) }
     try { $null = Invoke-DevStartup -RepoRoot $Root -TunnelTimeoutSeconds 3 -BackendTimeoutSeconds 3 }
     catch { $Signals.Failure = $_.Exception.Message }

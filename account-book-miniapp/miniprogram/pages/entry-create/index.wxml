@@ -1,12 +1,12 @@
 <view class="page">
-  <view class="error-panel" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retryDictionaries">重新读取分类和账户</button></view>
+  <view class="error-panel save-error" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retryDictionaries">重新读取分类和账户</button></view>
   <view class="card form">
-    <text>收支类型</text><picker disabled="{{loading || busy || canRetry}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
+    <text>收支类型</text><picker disabled="{{loading || busy || canRetry}}" range="{{['支出','收入']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : '收入'}}</view></picker>
     <text>金额</text><input disabled="{{loading || busy || canRetry}}" type="digit" value="{{amount}}" bindinput="onAmountInput"/>
     <text>分类</text><picker disabled="{{loading || busy || canRetry}}" range="{{categories}}" range-key="name" bindchange="onCategoryChange"><view>{{categoryName || '请选择分类'}}</view></picker>
     <text>账户</text><picker disabled="{{loading || busy || canRetry}}" range="{{accounts}}" range-key="name" bindchange="onAccountChange"><view>{{accountName || '请选择账户'}}</view></picker>
     <text>日期</text><picker disabled="{{loading || busy || canRetry}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view>{{entryDate}}</view></picker>
-    <text>人名</text><input disabled="{{loading || busy || canRetry}}" maxlength="64" value="{{personName}}" placeholder="请输入人名（选填）" bindinput="onPersonNameInput"/>
+    <text>人名</text><input disabled="{{loading || busy || canRetry}}" maxlength="64" value="{{personName}}" placeholder="请输入人名" bindinput="onPersonNameInput"/>
     <text>备注</text><textarea disabled="{{loading || busy || canRetry}}" maxlength="500" value="{{note}}" bindinput="onNoteInput"/>
     <button class="button button-primary" loading="{{busy}}" disabled="{{loading || busy || canRetry}}" bindtap="onSubmit">保存账单</button>
     <button wx:if="{{canRetry}}" disabled="{{busy}}" bindtap="onRetry">使用原提交标识重试</button>

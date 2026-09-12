@@ -1,0 +1,7 @@
+<view class="tab-bar">
+  <view class="tab-items" role="tablist">
+    <view wx:for="{{tabs}}" wx:key="url" class="tab-item {{selected === index ? 'selected' : ''}}" data-index="{{index}}" bindtap="switchTab" role="tab" aria-label="{{item.text}}" aria-selected="{{selected === index}}">
+      <text>{{item.text}}</text>
+    </view>
+  </view>
+</view>

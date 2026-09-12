@@ -63,6 +63,7 @@ function Assert-LocalBackendPreflight([string]$RepoRoot) {
     Assert-FixtureRoot $RepoRoot
     $State.Events.Add('Preflight')
     if ($State.FailurePoint -eq 'Preflight') { throw 'SyntheticPreflightFailure' }
+    if ($State.FailurePoint -eq 'IncompleteJar') { throw 'JarMigrationInventoryRejected' }
 }
 function Initialize-LocalBackendKeys([string]$RepoRoot) {
     Assert-FixtureRoot $RepoRoot
@@ -162,6 +163,11 @@ Test-Case 'preserve-only missing credentials fails without setup and releases ac
 Test-Case 'preserve-only preflight rejection never accesses encrypted configuration' {
     $state = Invoke-OfflineStartup -FailurePoint Preflight
     Assert-OfflineResult $state 'Preflight' 0
+}
+Test-Case 'incomplete JAR reports an actionable reason without accessing credentials' {
+    $state = Invoke-OfflineStartup -FailurePoint IncompleteJar
+    Assert-OfflineResult $state 'Preflight' 0
+    Assert-True (($state.Messages -join ' ') -like '*JAR is incomplete*Start-Dev.cmd*') 'Missing artifact recovery guidance.'
 }
 Test-Case 'omitting the switch preserves the original initialization and credential setup flow' {
     $state = Invoke-OfflineStartup -Mode Default

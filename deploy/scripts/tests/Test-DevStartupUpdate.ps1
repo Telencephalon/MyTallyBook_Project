@@ -58,6 +58,7 @@ function Invoke-UpdateFixture($State) {
             return ((-not $Fixture.HealthRequiresTunnel -or $Fixture.InitialTunnelPresent -or $Fixture.StartedTunnel) -and $Fixture.Elapsed -ge $Fixture.HealthReadyAt)
         }
         function Assert-DevStartupFiles([string]$RepoRoot) { $Fixture.Events.Add('startup-files') }
+        function Test-Path { param($LiteralPath, $PathType) return $true }
         function Assert-DevUpdatePreflight([string]$RepoRoot) {
             $Fixture.Events.Add('update-preflight')
             if ($Fixture.FailurePoint -eq 'Preflight') { throw 'UpdatePreflightFailed' }

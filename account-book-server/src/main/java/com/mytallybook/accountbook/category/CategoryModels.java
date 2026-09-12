@@ -13,7 +13,7 @@ public final class CategoryModels {
     public record CategoryList(List<CategoryView> items) {}
     public record CategoryInput(String entryType, String name, String icon, String color,
                                 Integer sortNo, String status) {}
-    public record CategoryUpdate(String name, String icon, String color, Integer sortNo, String status) {}
+    public record CategoryUpdate(String entryType, String name, String icon, String color, Integer sortNo, String status) {}
 
     public static final class CreateRequest extends StrictRequest {
         private String entryType;
@@ -36,12 +36,14 @@ public final class CategoryModels {
     }
 
     public static final class UpdateRequest extends StrictRequest {
+        private String entryType;
         private String name;
         private String icon;
         private String color;
         private String status;
         private Integer sortNo;
 
+        public void setEntryType(JsonNode value) { entryType = string(value); }
         public void setName(JsonNode value) { name = string(value); }
         public void setIcon(JsonNode value) { icon = nullableString(value); }
         public void setColor(JsonNode value) { color = nullableString(value); }
@@ -49,7 +51,7 @@ public final class CategoryModels {
         public void setStatus(JsonNode value) { status = string(value); }
 
         public CategoryUpdate value() {
-            return new CategoryUpdate(name, icon, color, sortNo, status);
+            return new CategoryUpdate(entryType, name, icon, color, sortNo, status);
         }
     }
 }

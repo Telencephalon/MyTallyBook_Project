@@ -1,13 +1,16 @@
 <view class="page tab-page">
-  <view class="card filters">
-    <picker mode="date" value="{{dateFrom}}" bindchange="onDateFrom"><view>开始日期：{{dateFrom || '不限'}}</view></picker>
-    <picker mode="date" value="{{dateTo}}" bindchange="onDateTo"><view>结束日期：{{dateTo || '不限'}}</view></picker>
-    <picker range="{{['全部类型','支出','收入']}}" bindchange="onType"><view>类型：{{entryType || '全部'}}</view></picker>
-    <picker range="{{categories}}" range-key="displayName" bindchange="onCategory"><view>分类：{{categoryName || '全部'}}</view></picker>
-    <picker range="{{accounts}}" range-key="displayName" bindchange="onAccount"><view>账户：{{accountName || '全部'}}</view></picker>
-    <picker range="{{creators}}" range-key="displayName" bindchange="onCreator"><view>创建人：{{createdBy || '全部'}}</view></picker>
-    <input placeholder="按备注字面搜索" value="{{keyword}}" bindinput="onKeyword"/>
-    <view class="actions"><button bindtap="onClearFilters">清除</button><button bindtap="onApplyFilters">应用</button></view>
+  <view class="card filters-card">
+    <view class="filter-toggle" bindtap="toggleFilters"><text>筛选条件</text><text>{{filtersExpanded ? '收起' : '展开'}}</text></view>
+    <view class="filters" wx:if="{{filtersExpanded}}">
+      <picker mode="date" value="{{dateFrom}}" bindchange="onDateFrom"><view>开始日期：{{dateFrom || '不限'}}</view></picker>
+      <picker mode="date" value="{{dateTo}}" bindchange="onDateTo"><view>结束日期：{{dateTo || '不限'}}</view></picker>
+      <picker range="{{['全部类型','支出','收入']}}" bindchange="onType"><view>类型：{{entryType || '全部'}}</view></picker>
+      <picker range="{{categories}}" range-key="displayName" bindchange="onCategory"><view>分类：{{categoryName || '全部'}}</view></picker>
+      <picker range="{{accounts}}" range-key="displayName" bindchange="onAccount"><view>账户：{{accountName || '全部'}}</view></picker>
+      <picker range="{{creators}}" range-key="displayName" bindchange="onCreator"><view>创建人：{{createdBy || '全部'}}</view></picker>
+      <input placeholder="按备注字面搜索" value="{{keyword}}" bindinput="onKeyword"/>
+      <view class="actions"><button bindtap="onClearFilters">清除</button><button bindtap="onApplyFilters">应用</button></view>
+    </view>
   </view>
   <button class="button button-primary" disabled="{{loading}}" bindtap="openCreate">新增账单</button>
   <view class="card" wx:if="{{loadState === 'loading'}}">正在加载账单…</view>

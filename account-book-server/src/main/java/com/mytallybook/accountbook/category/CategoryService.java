@@ -20,7 +20,7 @@ import java.util.Set;
 
 @Service
 public class CategoryService {
-    private static final Set<String> TYPES = Set.of("INCOME", "EXPENSE");
+    private static final Set<String> TYPES = Set.of("INCOME", "EXPENSE", "BOTH");
     private static final Set<String> STATUSES = Set.of("ACTIVE", "DISABLED");
 
     private final LedgerReadGuard readGuard;
@@ -79,20 +79,21 @@ public class CategoryService {
                                               CategoryModels.CategoryUpdate body, String requestId) {
         long id = BookkeepingValidation.safeId(rawId);
         requireManager(writeGuard.lock().requireActor(actor));
-        store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND));
+        var original = store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND));
+        String type = body.entryType() == null ? original.entryType() : BookkeepingValidation.oneOf(body.entryType(), TYPES);
         String name = BookkeepingValidation.name(body.name());
         String icon = BookkeepingValidation.nullableIcon(body.icon());
         String color = BookkeepingValidation.nullableColor(body.color());
         String status = BookkeepingValidation.oneOf(body.status(), STATUSES);
         int sortNo = BookkeepingValidation.sortNo(body.sortNo(), 0);
         try {
-            if (store.update(id, name, icon, color, sortNo, status) != 1) {
+            if (store.update(id, type, name, icon, color, sortNo, status) != 1) {
                 throw error(ErrorCode.RESOURCE_STATE_CHANGED);
             }
         } catch (DataIntegrityViolationException exception) {
             throw error(ErrorCode.CATEGORY_NAME_CONFLICT);
         }
-        append(actor, "CATEGORY_UPDATE", id, requestId, Map.of("name", name, "status", status));
+        append(actor, "CATEGORY_UPDATE", id, requestId, Map.of("entryType", type, "name", name, "status", status));
         return view(store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_STATE_CHANGED)));
     }
 

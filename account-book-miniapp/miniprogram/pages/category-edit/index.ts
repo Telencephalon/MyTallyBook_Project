@@ -230,10 +230,8 @@ Page({
   },
 
   onTypeChange(event: WechatMiniprogram.PickerChange) {
-    if (!this.data.editing) {
-      if (!this.markDraftDirty()) return
-      this.setData({ entryType: Number(event.detail.value) === 0 ? 'EXPENSE' : 'INCOME' })
-    }
+    if (!this.markDraftDirty()) return
+    this.setData({ entryType: (['EXPENSE', 'INCOME', 'BOTH'] as EntryType[])[Number(event.detail.value)] })
   },
 
   onStatusChange(event: WechatMiniprogram.PickerChange) {
@@ -281,6 +279,7 @@ Page({
     const guard = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
     const current = () => guard() && this.sessionKey(runtime) === contextKey
     const body = {
+      entryType: this.data.entryType,
       name: this.data.name.trim(),
       icon: this.data.icon.trim() || null,
       color: this.data.color.trim() || null,
@@ -290,7 +289,7 @@ Page({
     this.setData({ busy: true, errorMessage: '', requestId: '', canRetryRead: false })
     try {
       if (this.data.editing) await runtime.catalog.updateCategory(this.data.id, body)
-      else await runtime.catalog.createCategory({ entryType: this.data.entryType, ...body })
+      else await runtime.catalog.createCategory(body)
       if (current()) wx.redirectTo({ url: '/pages/category-list/index' })
       else this.syncContext(runtime)
     } catch (error) {

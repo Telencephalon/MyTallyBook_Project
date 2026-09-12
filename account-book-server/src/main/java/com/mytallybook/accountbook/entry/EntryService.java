@@ -128,7 +128,7 @@ public class EntryService {
         boolean unchangedCategory = original != null && original.categoryId() == categoryId
                 && original.entryType().equals(entryType);
         boolean unchangedAccount = original != null && original.accountId() == accountId;
-        if (!category.entryType().equals(entryType)
+        if (!(category.entryType().equals(entryType) || category.entryType().equals("BOTH"))
                 || (!unchangedCategory && !"ACTIVE".equals(category.status()))
                 || (!unchangedAccount && !"ACTIVE".equals(account.status()))) {
             throw error(ErrorCode.VALIDATION_FAILED);

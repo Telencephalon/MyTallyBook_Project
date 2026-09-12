@@ -8,7 +8,7 @@
   <view class="card form">
     <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput" disabled="{{loading || busy}}"/>
     <text>收支类型{{editing ? '（不可修改）' : ''}}</text>
-    <picker disabled="{{editing || loading || busy}}" range="{{['支出','收入']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : '收入'}}</view></picker>
+    <picker disabled="{{loading || busy}}" range="{{['支出','收入','收支']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : entryType === 'INCOME' ? '收入' : '收支'}}</view></picker>
     <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput" disabled="{{loading || busy}}"/>
     <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput" disabled="{{loading || busy}}"/>
     <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput" disabled="{{loading || busy}}"/>

@@ -50,6 +50,22 @@ try {
 } catch {
     # Never print exceptions, credentials, process metadata or environment contents.
     Write-Host ('Local backend startup failed during ' + $stage + '. No automatic repair was attempted.')
+    $reasons = @{
+        JarMigrationInventoryRejected = 'The JAR is incomplete or stale. Run Start-Dev.cmd to validate and rebuild it before startup.'
+        JarMigrationHashRejected = 'The packaged migrations do not match this checkout. Run Start-Dev.cmd to rebuild the JAR.'
+        SourceMigrationInventoryRejected = 'Migration source inventory differs from the approved versions.'
+        SourceMigrationHashRejected = 'Migration source checksums differ from the approved versions.'
+        JavaOrJarMissing = 'The configured Java executable or backend JAR is missing. Use Start-Dev.cmd for JAR recovery.'
+        AppPortOccupied = 'Port 7631 is occupied. Use Start-Dev.cmd to reuse the verified backend.'
+        TunnelListenerRejected = 'The SSH tunnel at 127.0.0.1:13306 is not ready. Use Start-Dev.cmd and complete SSH authentication first.'
+        TunnelOwnerUnknown = 'The SSH tunnel owner could not be verified.'
+        TunnelExecutableRejected = 'The tunnel listener does not belong to the configured Windows OpenSSH.'
+        TunnelCommandRejected = 'The SSH tunnel does not match the configured forwarding command.'
+        KeyStorageReadFailed = 'Existing encrypted keys could not be read by this Windows user.'
+        CredentialStorageReadFailed = 'Existing encrypted credentials could not be read by this Windows user.'
+    }
+    $category = $_.Exception.Message
+    if ($reasons.ContainsKey($category)) { Write-Host ('Reason: ' + $reasons[$category]) }
 } finally {
     if ($null -ne $startInfo) { $startInfo.EnvironmentVariables.Clear() }
     if ($null -ne $databasePassword) { $databasePassword.Dispose() }

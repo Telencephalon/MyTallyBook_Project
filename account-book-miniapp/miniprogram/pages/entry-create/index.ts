@@ -4,6 +4,7 @@ import type { Account, Category, EntryType } from '../../types/catalog'
 import { entryDraft, shanghaiToday } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
+import { navigateToPage } from '../../utils/navigation'
 
 Page({
   data: {
@@ -50,7 +51,7 @@ Page({
       this._intent?.consumeCompletedResult()
       this.setData({ loading: false, busy: false, canRetry: false })
       this.disableDepartureWarning()
-      wx.redirectTo({ url: `/pages/entry-detail/index?id=${completed.id}` })
+      navigateToPage('/pages/home/index')
       return
     }
     const pending = this._intent?.pendingResult() ?? null
@@ -90,7 +91,11 @@ Page({
         runtime.catalog.accounts('ACTIVE'),
       ])
       if (current()) {
-        const defaultCategory = this.data.favorPreset ? categories.items.find(item => item.name === '人情') : this.data.lifePreset ? categories.items.find(item => item.name === '居住') : categories.items[0]
+        const defaultCategory = this.data.favorPreset
+          ? categories.items.find(item => item.name === '人情')
+          : this.data.lifePreset
+            ? categories.items.find(item => item.name === '生活') || categories.items.find(item => item.name === '居住')
+            : categories.items[0]
         const categoryId = this.data.categoryId || defaultCategory?.id || 0
         const defaultAccount = this.data.favorPreset ? accounts.items.find(item => item.name === '微信') : accounts.items[0]
         const accountId = this.data.accountId || defaultAccount?.id || 0
@@ -201,6 +206,7 @@ Page({
     requireProtectionBeforeStart: boolean,
   ) {
     this.setData({ busy: true, errorMessage: '', requestId: '' })
+    const submitRevision = getRuntime().session.getRevision()
     try {
       const protectedDeparture = await this.enableDepartureWarning()
       if (!current()) return
@@ -214,11 +220,16 @@ Page({
         if (requireProtectionBeforeStart) return
       }
       const saved = await start()
-      if (current()) {
-        const completed = intent.consumeCompletedResult() ?? saved
-        this.disableDepartureWarning()
-        wx.redirectTo({ url: `/pages/entry-detail/index?id=${completed.id}` })
-      }
+      // A successful write is authoritative. Do not let a lifecycle update
+      // after the request make the saved form reusable or leave it visible.
+      // When the page is hidden, leave the completed result on the intent so
+      // onShow() can reconcile it and switch to the details tab. A session
+      // identity change invalidates the result and must never navigate.
+      this.disableDepartureWarning()
+      if (getRuntime().session.getRevision() !== submitRevision) return
+      if (!current()) return
+      intent.consumeCompletedResult() ?? saved
+      navigateToPage('/pages/home/index')
     } catch (error) {
       if (!current()) return
       const view = toErrorView(error)

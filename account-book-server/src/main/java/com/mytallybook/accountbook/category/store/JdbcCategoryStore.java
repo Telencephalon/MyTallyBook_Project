@@ -41,7 +41,7 @@ public class JdbcCategoryStore implements CategoryStore {
         var sql = new StringBuilder(SELECT);
         var arguments = new ArrayList<>();
         if (entryType != null) {
-            sql.append(" AND entry_type = ?");
+            sql.append(" AND (entry_type = ? OR entry_type = 'BOTH')");
             arguments.add(entryType);
         }
         if (status != null) {
@@ -79,12 +79,12 @@ public class JdbcCategoryStore implements CategoryStore {
     }
 
     @Override
-    public int update(long id, String name, String icon, String color, int sortNo, String status) {
+    public int update(long id, String entryType, String name, String icon, String color, int sortNo, String status) {
         return jdbc().update("""
                 UPDATE category
-                SET name = ?, icon = ?, color = ?, sort_no = ?, status = ?
+                SET entry_type = ?, name = ?, icon = ?, color = ?, sort_no = ?, status = ?
                 WHERE ledger_id = 1 AND id = ?
-                """, name, icon, color, sortNo, status, id);
+                """, entryType, name, icon, color, sortNo, status, id);
     }
 
     @Override

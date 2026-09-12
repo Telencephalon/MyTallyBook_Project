@@ -59,7 +59,7 @@ async function loadPage(name: PageName, runtime: ReturnType<typeof runtimeFor>, 
   let definition: PageShape | undefined
   vi.stubGlobal('Page', (value: PageShape) => { definition = value })
   vi.stubGlobal('wx', {
-    navigateTo: vi.fn(), redirectTo: vi.fn(), navigateBack: vi.fn(),
+    navigateTo: vi.fn(), switchTab: vi.fn(), redirectTo: vi.fn(), navigateBack: vi.fn(),
     showToast: vi.fn(),
     enableAlertBeforeUnload: vi.fn((options: any) => options.success?.({ errMsg: 'enableAlertBeforeUnload:ok' })),
     disableAlertBeforeUnload: vi.fn(),
@@ -94,6 +94,15 @@ describe('entry create page', () => {
     }))
   })
 
+  it('opens the life shortcut with the life category selected', async () => {
+    const runtime = runtimeFor()
+    runtime.catalog.categories.mockResolvedValue({ items: [{ ...category, id: 11, name: '生活' }] })
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'life' }); await page.onShow()
+    expect(page.data.categoryName).toBe('生活')
+    expect(page.data.categoryId).toBe(11)
+  })
+
   it('leaves missing favor defaults unselected and preserves later user choices', async () => {
     const runtime = runtimeFor()
     const page = await loadPage('entry-create', runtime)
@@ -124,7 +133,7 @@ describe('entry create page', () => {
     let definition: PageShape | undefined
     const request = vi.fn()
     vi.stubGlobal('Page', (value: PageShape) => { definition = value })
-    vi.stubGlobal('wx', { request, redirectTo: vi.fn(), navigateBack: vi.fn() })
+    vi.stubGlobal('wx', { request, switchTab: vi.fn(), redirectTo: vi.fn(), navigateBack: vi.fn() })
     vi.doMock('../miniprogram/runtime', () => ({
       getRuntime: () => { throw new AppError('CONFIG', 'API_DOMAIN_INVALID', 'API 地址必须是备案后的 HTTPS 域名') },
     }))
@@ -194,7 +203,7 @@ describe('entry create page', () => {
     await page.onRetry()
 
     expect(runtime.entries.create.mock.calls[1][0]).toEqual(runtime.entries.create.mock.calls[0][0])
-    expect(wx.redirectTo).toHaveBeenCalledWith({ url: '/pages/entry-detail/index?id=40' })
+    expect(wx.switchTab).toHaveBeenCalledWith({ url: '/pages/home/index' })
   })
 
   it('preserves the complete create form after a direct network failure', async () => {
@@ -241,7 +250,7 @@ describe('entry create page', () => {
     page.onHide(); runtime.setRevision(2); await page.onShow()
     pending.resolve(entry); await operation
     expect(page.data.busy).toBe(false)
-    expect(wx.redirectTo).not.toHaveBeenCalled()
+    expect(wx.switchTab).not.toHaveBeenCalled()
     expect(wx.disableAlertBeforeUnload).toHaveBeenCalled()
   })
 
@@ -254,10 +263,10 @@ describe('entry create page', () => {
     await vi.waitFor(() => expect(runtime.entries.create).toHaveBeenCalledTimes(1))
 
     page.onHide(); pending.resolve(entry); await operation
-    expect(wx.redirectTo).not.toHaveBeenCalled()
+    expect(wx.switchTab).not.toHaveBeenCalled()
     await page.onShow()
 
-    expect(wx.redirectTo).toHaveBeenCalledWith({ url: '/pages/entry-detail/index?id=40' })
+    expect(wx.switchTab).toHaveBeenCalledWith({ url: '/pages/home/index' })
     expect(runtime.entries.create).toHaveBeenCalledTimes(1)
     expect(runtime.entries.newCreateIntent).toHaveBeenCalledTimes(1)
   })
@@ -308,7 +317,7 @@ describe('entry create page', () => {
     page.onHide(); pending.resolve(entry); await operation
     runtime.setRevision(2); await page.onShow()
 
-    expect(wx.redirectTo).not.toHaveBeenCalled()
+    expect(wx.switchTab).not.toHaveBeenCalled()
     expect(page.data).toMatchObject({ amount: '', canRetry: false, busy: false })
     expect(runtime.entries.newCreateIntent).toHaveBeenCalledTimes(2)
   })
@@ -330,7 +339,7 @@ describe('entry create page', () => {
     pending.resolve(entry); await operation
     expect(page.data.busy).toBe(false)
     expect(wx.disableAlertBeforeUnload).toHaveBeenCalled()
-    expect(wx.redirectTo).toHaveBeenCalledWith({ url: '/pages/entry-detail/index?id=40' })
+    expect(wx.switchTab).toHaveBeenCalledWith({ url: '/pages/home/index' })
   })
 
   it('does not start a write when native departure-warning activation fails', async () => {
@@ -369,7 +378,6 @@ describe('entry create page', () => {
     expect(wx.navigateBack).toHaveBeenCalledTimes(1)
   })
 })
-
 describe('entry list/detail/edit pages', () => {
   it('entry-list exposes a read retry after a failed load', async () => {
     const runtime = runtimeFor()
@@ -384,6 +392,21 @@ describe('entry list/detail/edit pages', () => {
     expect(wxml).toContain('bindtap="retry"')
     await page.retry()
     expect(runtime.entries.list).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps list filters collapsed until the filter header is tapped', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+
+    expect(page.data.filtersExpanded).toBe(false)
+    page.toggleFilters()
+    expect(page.data.filtersExpanded).toBe(true)
+    page.toggleFilters()
+    expect(page.data.filtersExpanded).toBe(false)
+
+    const wxml = readFileSync(new URL('../miniprogram/pages/entry-list/index.wxml', import.meta.url), 'utf8')
+    expect(wxml).toContain('bindtap="toggleFilters"')
+    expect(wxml).toContain('wx:if="{{filtersExpanded}}"')
   })
 
   it('entry-detail exposes a read retry after a failed load', async () => {
@@ -406,7 +429,7 @@ describe('entry list/detail/edit pages', () => {
     let definition: PageShape | undefined
     const request = vi.fn()
     vi.stubGlobal('Page', (value: PageShape) => { definition = value })
-    vi.stubGlobal('wx', { request, redirectTo: vi.fn(), navigateBack: vi.fn(), showModal: vi.fn() })
+    vi.stubGlobal('wx', { request, switchTab: vi.fn(), redirectTo: vi.fn(), navigateBack: vi.fn(), showModal: vi.fn() })
     vi.doMock('../miniprogram/runtime', () => ({
       getRuntime: () => { throw new AppError('CONFIG', 'API_DOMAIN_INVALID', 'API 地址必须是备案后的 HTTPS 域名') },
     }))
@@ -541,7 +564,7 @@ describe('entry list/detail/edit pages', () => {
     expect(page.data.errorMessage).not.toBe('')
     expect(page.data.requestId).toBe('req-edit-network')
     expect(runtime.entries.update).toHaveBeenCalledTimes(1)
-    expect(wx.redirectTo).not.toHaveBeenCalled()
+    expect(wx.switchTab).not.toHaveBeenCalled()
   })
 
   it('entry-edit keeps a hidden pending save locked until it settles', async () => {
@@ -564,7 +587,7 @@ describe('entry list/detail/edit pages', () => {
     await pending
 
     expect(page.data.busy).toBe(false)
-    expect(wx.redirectTo).not.toHaveBeenCalled()
+    expect(wx.switchTab).not.toHaveBeenCalled()
   })
 
   it('edit preserves the conflict message and reload action across hide/show', async () => {

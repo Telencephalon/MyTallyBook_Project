@@ -91,11 +91,11 @@ class CategoryHttpTests {
                 .andExpect(status().isForbidden());
         when(store.find(7)).thenReturn(Optional.of(new CategoryStore.CategoryRow(
                 7, "EXPENSE", "新名", null, null, 0, false, "ACTIVE")));
-        when(store.update(eq(7L), any(), any(), any(), anyInt(), any())).thenReturn(1);
+        when(store.update(eq(7L), anyString(), anyString(), any(), any(), anyInt(), any())).thenReturn(1);
         for (HttpMethod method : List.of(HttpMethod.PUT, HttpMethod.PATCH)) {
             mvc.perform(request(method, "/api/v1/categories/7").header("Authorization", "Bearer admin")
                             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                            .content("{\"name\":\"新名\",\"icon\":null,\"color\":null,\"sortNo\":0,\"status\":\"ACTIVE\"}"))
+                            .content("{\"entryType\":\"EXPENSE\",\"name\":\"新名\",\"icon\":null,\"color\":null,\"sortNo\":0,\"status\":\"ACTIVE\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.entryType").value("EXPENSE"));
         }
