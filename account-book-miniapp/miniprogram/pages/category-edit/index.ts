@@ -290,7 +290,7 @@ Page({
     try {
       if (this.data.editing) await runtime.catalog.updateCategory(this.data.id, body)
       else await runtime.catalog.createCategory(body)
-      if (current()) wx.redirectTo({ url: '/pages/category-list/index' })
+      if (current()) wx.navigateBack()
       else this.syncContext(runtime)
     } catch (error) {
       if (!current()) {

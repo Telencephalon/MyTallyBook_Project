@@ -78,6 +78,7 @@ async function loadPage(name: PageName, runtime: Record<string, any>, confirm = 
   })
   vi.stubGlobal('wx', {
     navigateTo: vi.fn(),
+    navigateBack: vi.fn(),
     redirectTo: vi.fn(),
     showModal: vi.fn((options: any) => options.success({ confirm, cancel: !confirm })),
     showToast: vi.fn(),
@@ -329,6 +330,20 @@ describe('catalog edit pages', () => {
     expect(page.data.busy).toBe(false)
     expect(page.data.loading).toBe(false)
     expect(page.data.name).toBe('未保存名称')
+    expect(wx.redirectTo).not.toHaveBeenCalled()
+  })
+
+  it('returns to the existing category list after saving an edit', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('category-edit', runtime)
+    page.onLoad({ id: '7' })
+    await page.onShow()
+    page.onNameInput({ detail: { value: '新分类名称' } })
+
+    await page.onSubmit()
+
+    expect(runtime.catalog.updateCategory).toHaveBeenCalledTimes(1)
+    expect(wx.navigateBack).toHaveBeenCalledTimes(1)
     expect(wx.redirectTo).not.toHaveBeenCalled()
   })
 
