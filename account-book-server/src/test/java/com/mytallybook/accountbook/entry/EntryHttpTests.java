@@ -65,23 +65,24 @@ class EntryHttpTests {
         when(store.findByClientRequestId(UUID)).thenReturn(Optional.empty());
         when(store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
-        when(store.insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong())).thenReturn(40L);
-        when(store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(0L))).thenReturn(1);
+        when(store.insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any())).thenReturn(40L);
+        when(store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(0L), any())).thenReturn(1);
         when(store.softDelete(eq(40L), any(), anyLong(), eq(0L))).thenReturn(1);
 
         mvc.perform(get("/api/v1/entries?entryType=EXPENSE&page=1&pageSize=20").header("Authorization", "Bearer member"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].amount").value("3.40"))
                 .andExpect(jsonPath("$.data.total").value(1));
         mvc.perform(get("/api/v1/entries/40").header("Authorization", "Bearer member"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.canEdit").value(true));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.canEdit").value(true))
+                .andExpect(jsonPath("$.data.personName").value("张三"));
         mvc.perform(get("/api/v1/entries/creators").header("Authorization", "Bearer member"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].displayName").value("家庭成员"));
         mvc.perform(post("/api/v1/entries").header("Authorization", "Bearer member")
-                        .contentType("application/json").content(createBody()))
+                        .contentType("application/json").content(createBody().replace("}", ",\"personName\":\"张三\"}")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.clientRequestId").value(UUID));
         for (HttpMethod method : List.of(HttpMethod.PUT, HttpMethod.PATCH)) {
             mvc.perform(request(method, "/api/v1/entries/40").header("Authorization", "Bearer member")
-                            .contentType("application/json").content(updateBody()))
+                            .contentType("application/json").content(updateBody().replace("}", ",\"personName\":\"李四\"}")))
                     .andExpect(status().isOk());
         }
         mvc.perform(delete("/api/v1/entries/40?version=0").header("Authorization", "Bearer member"))
@@ -89,8 +90,28 @@ class EntryHttpTests {
     }
 
     @Test
+    void legacyUpdatePreservesPersonNameAndExplicitNullClearsIt() throws Exception {
+        when(store.find(40)).thenReturn(Optional.of(entry()));
+        when(store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "人情", "ACTIVE")));
+        when(store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "微信", "ACTIVE")));
+        when(store.update(anyLong(), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong(), any())).thenReturn(1);
+
+        mvc.perform(put("/api/v1/entries/40").header("Authorization", "Bearer member")
+                .contentType("application/json").content(updateBody())).andExpect(status().isOk());
+        verify(store).update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), eq(2L), any(), eq(0L), eq("张三"));
+
+        mvc.perform(patch("/api/v1/entries/40").header("Authorization", "Bearer member")
+                .contentType("application/json").content(updateBody().replace("}", ",\"personName\":null}")))
+                .andExpect(status().isOk());
+        verify(store).update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), eq(2L), any(), eq(0L), isNull());
+    }
+
+    @Test
     void unknownForgeryAndWrongJsonShapesAreRejectedBeforeMutation() throws Exception {
         for (String body : List.of(
+                createBody().replace("}", ",\"personName\":123}"),
+                createBody().replace("}", ",\"personName\":{}}"),
+                createBody().replace("}", ",\"personName\":\"" + "名".repeat(65) + "\"}"),
                 createBody().replace("}", ",\"createdBy\":1}"),
                 createBody().replace("}", ",\"ledgerId\":1}"),
                 createBody().replace("\"3.40\"", "3.40"),
@@ -103,8 +124,8 @@ class EntryHttpTests {
                         .contentType("application/json")
                         .content(updateBody().replace("}", ",\"clientRequestId\":\"" + UUID + "\"}")))
                 .andExpect(status().isBadRequest());
-        verify(store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong());
-        verify(store, never()).update(anyLong(), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong());
+        verify(store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
+        verify(store, never()).update(anyLong(), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong(), any());
     }
 
     @Test
@@ -133,7 +154,7 @@ class EntryHttpTests {
     private static EntryStore.EntryRow entry() {
         return new EntryStore.EntryRow(40, "EXPENSE", new BigDecimal("3.40"), 7, "餐饮", "ACTIVE", 8, "现金", "ACTIVE",
                 LocalDate.of(2026, 9, 6), "晚餐", 2, "家庭成员", Instant.parse("2026-09-06T01:00:00Z"),
-                Instant.parse("2026-09-06T01:00:00Z"), null, UUID, 0);
+                Instant.parse("2026-09-06T01:00:00Z"), null, UUID, 0, "张三");
     }
 
     private static MemberStore.MemberState row(long memberId, long userId, MemberRole role) {

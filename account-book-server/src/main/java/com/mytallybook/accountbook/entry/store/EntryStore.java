@@ -17,9 +17,9 @@ public interface EntryStore {
     Optional<AccountReference> findAccount(long id);
     List<CreatorRow> creators();
     long insert(String entryType, BigDecimal amount, long categoryId, long accountId,
-                LocalDate entryDate, String note, String clientRequestId, long actorUserId);
+                LocalDate entryDate, String note, String clientRequestId, long actorUserId, String personName);
     int update(long id, String entryType, BigDecimal amount, long categoryId, long accountId,
-               LocalDate entryDate, String note, long actorUserId, Instant updatedAt, long version);
+               LocalDate entryDate, String note, long actorUserId, Instant updatedAt, long version, String personName);
     int softDelete(long id, Instant deletedAt, long actorUserId, long version);
 
     record EntryRow(long id, String entryType, BigDecimal amount,
@@ -27,7 +27,7 @@ public interface EntryStore {
                     long accountId, String accountName, String accountStatus,
                     LocalDate entryDate, String note, long createdBy, String creatorName,
                     Instant createdAt, Instant updatedAt,
-                    Instant deletedAt, String clientRequestId, long version) {}
+                    Instant deletedAt, String clientRequestId, long version, String personName) {}
     record CategoryReference(long id, String entryType, String name, String status) {}
     record AccountReference(long id, String name, String status) {}
     record CreatorRow(long userId, String displayName) {}

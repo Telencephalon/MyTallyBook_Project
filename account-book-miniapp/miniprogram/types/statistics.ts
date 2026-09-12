@@ -1,4 +1,5 @@
 import type { EntryType } from './catalog'
+export type RankingDirection = EntryType | 'ALL'
 
 export type StatisticsRangeType = 'MONTH' | 'ALL' | 'RANGE'
 
@@ -49,7 +50,7 @@ export interface RankingItem {
 }
 
 export interface RankingStatistics extends StatisticsPeriodMeta {
-  entryType: EntryType
+  entryType: RankingDirection
   total: string
   items: RankingItem[]
 }

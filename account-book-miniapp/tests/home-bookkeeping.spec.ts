@@ -32,93 +32,31 @@ async function loadPage(runtime: ReturnType<typeof runtimeFor>) {
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('home bookkeeping dashboard', () => {
-  it('loads the current-month summary and recent five independently of any month filter', async () => {
+  it('loads recent entries without requesting the removed monthly summary', async () => {
     const runtime = runtimeFor()
     const page = await loadPage(runtime)
-
+    const tabData = vi.fn()
+    page.getTabBar = () => ({ setData: tabData })
     await page.onShow()
-
-    expect(runtime.statistics.summary).toHaveBeenCalledWith()
+    expect(tabData).toHaveBeenCalledWith({ selected: 0 })
+    expect(runtime.statistics.summary).not.toHaveBeenCalled()
     expect(runtime.entries.list).toHaveBeenCalledWith({ page: 1, pageSize: 5 })
-    expect(page.data.summary).toEqual(summary)
     expect(page.data.recentEntries).toEqual([entry])
+    page.openFavorEntry()
+    expect(wx.navigateTo).toHaveBeenCalledWith({ url: '/pages/entry-create/index?preset=favor' })
   })
 
-  it('summary failure is visible and never represented as a successful zero summary', async () => {
-    const runtime = runtimeFor()
-    runtime.statistics.summary.mockRejectedValueOnce(new Error('offline'))
-    const page = await loadPage(runtime)
-
-    await page.onShow()
-
-    expect(page.data.summaryError).not.toBe('')
-    expect(page.data.summary).toBeNull()
-    expect(page.data.recentEntries).toEqual([entry])
-  })
-
-  it('recent failure does not erase a successful summary', async () => {
+  it('retries recent failures without requesting a summary', async () => {
     const runtime = runtimeFor()
     runtime.entries.list.mockRejectedValueOnce(new Error('offline'))
     const page = await loadPage(runtime)
-
     await page.onShow()
-
-    expect(page.data.summary).toEqual(summary)
     expect(page.data.recentError).not.toBe('')
     expect(page.data.recentEntries).toEqual([])
-  })
-
-  it('summary retry does not request or clear the successful recent section', async () => {
-    const runtime = runtimeFor()
-    const page = await loadPage(runtime)
-    await page.onShow()
-    runtime.statistics.summary.mockRejectedValueOnce(new Error('summary retry failed'))
-    runtime.entries.list.mockClear()
-
-    await page.retrySummary()
-
-    expect(runtime.entries.list).not.toHaveBeenCalled()
-    expect(page.data.recentEntries).toEqual([entry])
-    expect(page.data.recentError).toBe('')
-    expect(page.data.summary).toBeNull()
-    expect(page.data.summaryError).not.toBe('')
-  })
-
-  it('recent retry does not request or clear the successful summary section', async () => {
-    const runtime = runtimeFor()
-    const page = await loadPage(runtime)
-    await page.onShow()
-    runtime.entries.list.mockRejectedValueOnce(new Error('recent retry failed'))
-    runtime.statistics.summary.mockClear()
-
     await page.retryRecent()
-
+    expect(page.data.recentError).toBe('')
+    expect(page.data.recentEntries).toEqual([entry])
     expect(runtime.statistics.summary).not.toHaveBeenCalled()
-    expect(page.data.summary).toEqual(summary)
-    expect(page.data.summaryError).toBe('')
-    expect(page.data.recentEntries).toEqual([])
-    expect(page.data.recentError).not.toBe('')
-  })
-
-  it('a superseded summary retry cannot overwrite or release the latest summary request', async () => {
-    const runtime = runtimeFor()
-    const page = await loadPage(runtime)
-    await page.onShow()
-    let resolveOld!: (value: typeof summary) => void
-    const old = new Promise<typeof summary>(resolve => { resolveOld = resolve })
-    runtime.statistics.summary.mockReturnValueOnce(old)
-      .mockResolvedValueOnce({ ...summary, net: '99.00' })
-
-    const oldRetry = page.retrySummary()
-    await Promise.resolve()
-    const latestRetry = page.retrySummary()
-    await latestRetry
-    resolveOld({ ...summary, net: '1.00' })
-    await oldRetry
-
-    expect(page.data.summary.net).toBe('99.00')
-    expect(page.data.summaryError).toBe('')
-    expect(page.data.summaryLoading).toBe(false)
   })
 
   it('a superseded recent retry cannot overwrite the latest recent request', async () => {

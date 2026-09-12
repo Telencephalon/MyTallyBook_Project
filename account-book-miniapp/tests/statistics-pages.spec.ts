@@ -87,9 +87,9 @@ describe('statistics page', () => {
     await page.onShow()
     expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-09')
     expect(runtime.statistics.daily).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'EXPENSE')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'ALL')
     expect(runtime.statistics.accounts).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'EXPENSE')
+    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'ALL')
 
     Object.values(runtime.statistics).forEach(mock => mock.mockClear())
     await page.onDirectionChange({ detail: { value: '1' } })
@@ -99,6 +99,17 @@ describe('statistics page', () => {
     expect(runtime.statistics.summary).not.toHaveBeenCalled()
     expect(runtime.statistics.daily).not.toHaveBeenCalled()
     expect(runtime.statistics.accounts).not.toHaveBeenCalled()
+  })
+
+  it('offers an all direction and requests both ranking dimensions together', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    await page.onShow()
+    await page.onDirectionChange({ detail: { value: '2' } })
+    expect(page.data.directionLabels).toEqual(['支出', '收入', '全部'])
+    expect(page.data.entryType).toBe('ALL')
+    expect(runtime.statistics.categories).toHaveBeenLastCalledWith(expect.anything(), 'ALL')
+    expect(runtime.statistics.members).toHaveBeenLastCalledWith(expect.anything(), 'ALL')
   })
 
   it('month switching reloads all five views and stale out-of-order data cannot overwrite it', async () => {
@@ -313,9 +324,9 @@ describe('statistics page', () => {
     const query = { rangeType: 'ALL' }
     expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
     expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
-    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'EXPENSE')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'ALL')
     expect(runtime.statistics.accounts).toHaveBeenCalledWith(query)
-    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'EXPENSE')
+    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'ALL')
     expect(page.data.dailyPage).toBe(1)
   })
 

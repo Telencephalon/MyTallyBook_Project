@@ -1,1 +1,1 @@
-.toolbar,.row{display:flex;justify-content:space-between;align-items:center;gap:20rpx}.row{margin-bottom:18rpx}.row>view{display:flex;flex-direction:column;gap:8rpx}.muted,.empty{color:#667085;font-size:24rpx}
+.toolbar,.row{display:flex;justify-content:space-between;align-items:center;gap:20rpx}.row{margin-bottom:18rpx}.row>view{display:flex;flex-direction:column;gap:8rpx}.muted,.empty{color:#667085;font-size:24rpx}.create-button{background:#1677ff;color:#fff;font-weight:600;padding:0 28rpx;box-shadow:0 6rpx 14rpx rgba(22,119,255,.25)}

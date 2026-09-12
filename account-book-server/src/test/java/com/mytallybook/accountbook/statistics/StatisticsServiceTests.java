@@ -154,6 +154,18 @@ class StatisticsServiceTests {
     }
 
     @Test
+    void allDirectionAggregatesBothIncomeAndExpenseRows() {
+        var h = harness();
+        when(h.store.categories(any(), isNull())).thenReturn(List.of(
+                new StatisticsStore.RankingRow(7, "人情", new BigDecimal("30.00"), 1),
+                new StatisticsStore.RankingRow(8, "工资", new BigDecimal("100.00"), 1)));
+        var ranking = h.service.categories(ACTOR, "2024-09", "ALL");
+        assertEquals("ALL", ranking.entryType());
+        assertEquals("130.00", ranking.total());
+        verify(h.store).categories(any(), isNull());
+    }
+
+    @Test
     void accountRowsExposeMonthlyFlowOnlyAndExactNet() {
         var h = harness();
         when(h.store.accounts(any())).thenReturn(List.of(new StatisticsStore.AccountRow(

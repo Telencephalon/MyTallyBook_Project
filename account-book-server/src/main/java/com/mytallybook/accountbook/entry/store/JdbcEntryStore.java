@@ -24,7 +24,7 @@ public class JdbcEntryStore implements EntryStore {
     private static final String SELECT = """
             SELECT e.id, e.entry_type, e.amount, e.category_id, c.name AS category_name,
                    c.status AS category_status, e.account_id, fa.name AS account_name,
-                   fa.status AS account_status, e.entry_date, e.note, e.created_by,
+                   fa.status AS account_status, e.entry_date, e.note, e.person_name, e.created_by,
                    COALESCE(NULLIF(lm.display_name, ''), u.nickname) AS creator_name,
                    e.created_at, e.updated_at, e.deleted_at, e.client_request_id, e.version
             FROM book_entry e
@@ -111,14 +111,14 @@ public class JdbcEntryStore implements EntryStore {
 
     @Override
     public long insert(String entryType, BigDecimal amount, long categoryId, long accountId,
-                       LocalDate entryDate, String note, String clientRequestId, long actorUserId) {
+                       LocalDate entryDate, String note, String clientRequestId, long actorUserId, String personName) {
         var keys = new GeneratedKeyHolder();
         int changed = jdbc().update(connection -> {
             var statement = connection.prepareStatement("""
                     INSERT INTO book_entry (
                         ledger_id, entry_type, amount, category_id, account_id,
-                        entry_date, note, client_request_id, created_by, updated_by, version
-                    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        entry_date, note, client_request_id, created_by, updated_by, version, person_name
+                    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, entryType);
             statement.setBigDecimal(2, amount);
@@ -129,6 +129,7 @@ public class JdbcEntryStore implements EntryStore {
             statement.setString(7, clientRequestId);
             statement.setLong(8, actorUserId);
             statement.setLong(9, actorUserId);
+            statement.setString(10, personName);
             return statement;
         }, keys);
         if (changed != 1 || keys.getKey() == null) throw new IllegalStateException("Entry insert failed");
@@ -137,11 +138,11 @@ public class JdbcEntryStore implements EntryStore {
 
     @Override
     public int update(long id, String entryType, BigDecimal amount, long categoryId, long accountId,
-                      LocalDate entryDate, String note, long actorUserId, Instant updatedAt, long version) {
+                      LocalDate entryDate, String note, long actorUserId, Instant updatedAt, long version, String personName) {
         return jdbc().update("""
-                UPDATE book_entry SET entry_type=?,amount=?,category_id=?,account_id=?,entry_date=?,note=?,updated_by=?,updated_at=?,version=version+1
+                UPDATE book_entry SET entry_type=?,amount=?,category_id=?,account_id=?,entry_date=?,note=?,person_name=?,updated_by=?,updated_at=?,version=version+1
                 WHERE ledger_id=1 AND id=? AND deleted_at IS NULL AND version=?
-                """, entryType, amount, categoryId, accountId, Date.valueOf(entryDate), note,
+                """, entryType, amount, categoryId, accountId, Date.valueOf(entryDate), note, personName,
                 actorUserId, Timestamp.from(updatedAt), id, version);
     }
 
@@ -191,7 +192,7 @@ public class JdbcEntryStore implements EntryStore {
                 row.getDate("entry_date").toLocalDate(), row.getString("note"),
                 row.getLong("created_by"), row.getString("creator_name"), row.getTimestamp("created_at").toInstant(),
                 row.getTimestamp("updated_at").toInstant(), instant(row.getTimestamp("deleted_at")),
-                row.getString("client_request_id"), row.getLong("version"));
+                row.getString("client_request_id"), row.getLong("version"), row.getString("person_name"));
     }
 
     private static Instant instant(Timestamp timestamp) { return timestamp == null ? null : timestamp.toInstant(); }

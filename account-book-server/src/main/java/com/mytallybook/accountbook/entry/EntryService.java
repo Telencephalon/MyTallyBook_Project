@@ -70,9 +70,9 @@ public class EntryService {
             return view(row, member);
         }
         var values = validate(body.entryType(), body.amount(), body.categoryId(), body.accountId(),
-                body.entryDate(), body.note(), null);
+                body.entryDate(), body.note(), body.personName(), null);
         long id = BookkeepingValidation.safeId(store.insert(values.entryType, values.amount, values.categoryId,
-                values.accountId, values.entryDate, values.note, clientRequestId, member.userId()));
+                values.accountId, values.entryDate, values.note, clientRequestId, member.userId(), values.personName));
         var result = view(store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_STATE_CHANGED)), member);
         append(member.userId(), "ENTRY_CREATE", id, requestId, Map.of(
                 "entryType", values.entryType, "amount", values.amount.toPlainString(),
@@ -89,9 +89,9 @@ public class EntryService {
         var current = store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND));
         requireMutation(member, current);
         var values = validate(body.entryType(), body.amount(), body.categoryId(), body.accountId(),
-                body.entryDate(), body.note(), current);
+                body.entryDate(), body.note(), body.personNameProvided() ? body.personName() : current.personName(), current);
         if (store.update(id, values.entryType, values.amount, values.categoryId, values.accountId,
-                values.entryDate, values.note, member.userId(), Instant.now(), version) != 1) {
+                values.entryDate, values.note, member.userId(), Instant.now(), version, values.personName) != 1) {
             throw error(ErrorCode.ENTRY_VERSION_CONFLICT);
         }
         append(member.userId(), "ENTRY_UPDATE", id, requestId, Map.of(
@@ -115,13 +115,14 @@ public class EntryService {
     }
 
     private Values validate(String rawType, String rawAmount, long rawCategoryId, long rawAccountId,
-                            String rawDate, String rawNote, EntryStore.EntryRow original) {
+                            String rawDate, String rawNote, String rawPersonName, EntryStore.EntryRow original) {
         String entryType = BookkeepingValidation.oneOf(rawType, TYPES);
         BigDecimal amount = BookkeepingValidation.money(rawAmount, false);
         long categoryId = BookkeepingValidation.safeId(rawCategoryId);
         long accountId = BookkeepingValidation.safeId(rawAccountId);
         LocalDate entryDate = BookkeepingValidation.date(rawDate);
         String note = BookkeepingValidation.entryNote(rawNote);
+        String personName = BookkeepingValidation.personName(rawPersonName);
         var category = store.findCategory(categoryId).orElseThrow(() -> error(ErrorCode.VALIDATION_FAILED));
         var account = store.findAccount(accountId).orElseThrow(() -> error(ErrorCode.VALIDATION_FAILED));
         boolean unchangedCategory = original != null && original.categoryId() == categoryId
@@ -132,7 +133,7 @@ public class EntryService {
                 || (!unchangedAccount && !"ACTIVE".equals(account.status()))) {
             throw error(ErrorCode.VALIDATION_FAILED);
         }
-        return new Values(entryType, amount, categoryId, accountId, entryDate, note);
+        return new Values(entryType, amount, categoryId, accountId, entryDate, note, personName);
     }
 
     private static void requireMutation(MemberStore.MemberState actor, EntryStore.EntryRow row) {
@@ -148,7 +149,7 @@ public class EntryService {
                 row.categoryName(), row.categoryStatus(), BookkeepingValidation.safeId(row.accountId()),
                 row.accountName(), row.accountStatus(), row.entryDate().toString(), row.note(),
                 BookkeepingValidation.safeId(row.createdBy()), row.creatorName(), row.createdAt(), row.updatedAt(),
-                BookkeepingValidation.version(row.version()), allowed, allowed, row.clientRequestId());
+                BookkeepingValidation.version(row.version()), allowed, allowed, row.clientRequestId(), row.personName());
     }
 
     private void append(long actorId, String action, long id, String requestId, Map<String, ?> details) {
@@ -156,6 +157,6 @@ public class EntryService {
     }
 
     private record Values(String entryType, BigDecimal amount, long categoryId, long accountId,
-                          LocalDate entryDate, String note) {}
+                          LocalDate entryDate, String note, String personName) {}
     private static BusinessException error(ErrorCode code) { return new BusinessException(code); }
 }

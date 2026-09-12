@@ -21,7 +21,9 @@
     "pages/about/index",
     "pages/privacy/index"
   ],
+  "usingComponents": {},
   "tabBar": {
+    "custom": true,
     "list": [
       { "pagePath": "pages/home/index", "text": "首页" },
       { "pagePath": "pages/entry-list/index", "text": "明细" },

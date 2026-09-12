@@ -9,6 +9,7 @@ public interface CategoryStore {
     long insert(String entryType, String name, String icon, String color, int sortNo, String status);
     int update(long id, String name, String icon, String color, int sortNo, String status);
     long referenceCount(long id);
+    int purgeDeletedReferences(long id);
     int delete(long id);
 
     record CategoryRow(long id, String entryType, String name, String icon, String color,

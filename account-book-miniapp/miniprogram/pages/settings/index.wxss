@@ -83,3 +83,8 @@
   border-radius: 18rpx;
   background: #fff1f0;
 }
+
+.ledger-name { display: block; margin-bottom: 24rpx; font-weight: 600; }
+.info-grid { display: flex; flex-wrap: wrap; gap: 24rpx; }
+.info-item { display: flex; flex: 1; min-width: 120rpx; flex-direction: column; gap: 10rpx; }
+.info-value { font-size: 27rpx; font-weight: 600; overflow-wrap: anywhere; }

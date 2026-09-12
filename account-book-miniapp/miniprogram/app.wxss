@@ -20,6 +20,11 @@ textarea {
   box-sizing: border-box;
 }
 
+.page.tab-page {
+  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(max(100rpx, 48px) + 32rpx + env(safe-area-inset-bottom));
+}
+
 textarea {
   min-height: 160rpx;
 }

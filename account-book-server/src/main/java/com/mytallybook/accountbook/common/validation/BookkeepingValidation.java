@@ -57,6 +57,12 @@ public final class BookkeepingValidation {
         if (text.codePointCount(0, text.length()) > 500) throw invalid();
         return text;
     }
+    public static String personName(String text) {
+        if (text == null) return null;
+        String value = text.trim();
+        if (value.codePointCount(0, value.length()) > 64) throw invalid();
+        return value.isEmpty() ? null : value;
+    }
     public static String name(String text) {
         if (text == null) throw invalid();
         String value = text.trim();

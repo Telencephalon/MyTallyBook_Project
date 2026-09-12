@@ -14,14 +14,14 @@ public final class EntryModels {
                             long accountId, String accountName, String accountStatus,
                             String entryDate, String note, long createdBy, String creatorName,
                             Instant createdAt, Instant updatedAt, long version,
-                            boolean canEdit, boolean canDelete, String clientRequestId) {}
+                            boolean canEdit, boolean canDelete, String clientRequestId, String personName) {}
     public record EntryPage(List<EntryView> items, int page, int pageSize, long total) {}
     public record CreatorOption(long userId, String displayName) {}
     public record CreatorList(List<CreatorOption> items) {}
     public record EntryInput(String entryType, String amount, long categoryId, long accountId,
-                             String entryDate, String note, String clientRequestId) {}
+                             String entryDate, String note, String clientRequestId, String personName) {}
     public record EntryUpdate(String entryType, String amount, long categoryId, long accountId,
-                              String entryDate, String note, Long version) {}
+                              String entryDate, String note, Long version, String personName, boolean personNameProvided) {}
 
     public static final class CreateRequest extends StrictRequest {
         private String entryType;
@@ -30,6 +30,7 @@ public final class EntryModels {
         private Long accountId;
         private String entryDate;
         private String note;
+        private String personName;
         private String clientRequestId;
 
         public void setEntryType(JsonNode value) { entryType = string(value); }
@@ -37,12 +38,13 @@ public final class EntryModels {
         public void setCategoryId(JsonNode value) { categoryId = longInteger(value); }
         public void setAccountId(JsonNode value) { accountId = longInteger(value); }
         public void setEntryDate(JsonNode value) { entryDate = string(value); }
+        public void setPersonName(JsonNode value) { personName = nullableString(value); }
         public void setNote(JsonNode value) { note = nullableString(value); }
         public void setClientRequestId(JsonNode value) { clientRequestId = string(value); }
 
         public EntryInput value() {
             return new EntryInput(entryType, amount, required(categoryId), required(accountId),
-                    entryDate, note, clientRequestId);
+                    entryDate, note, clientRequestId, personName);
         }
     }
 
@@ -53,6 +55,8 @@ public final class EntryModels {
         private Long accountId;
         private String entryDate;
         private String note;
+        private String personName;
+        private boolean personNameProvided;
         private Long version;
 
         public void setEntryType(JsonNode value) { entryType = string(value); }
@@ -60,12 +64,13 @@ public final class EntryModels {
         public void setCategoryId(JsonNode value) { categoryId = longInteger(value); }
         public void setAccountId(JsonNode value) { accountId = longInteger(value); }
         public void setEntryDate(JsonNode value) { entryDate = string(value); }
+        public void setPersonName(JsonNode value) { personName = nullableString(value); personNameProvided = true; }
         public void setNote(JsonNode value) { note = nullableString(value); }
         public void setVersion(JsonNode value) { version = longInteger(value); }
 
         public EntryUpdate value() {
             return new EntryUpdate(entryType, amount, required(categoryId), required(accountId),
-                    entryDate, note, version);
+                    entryDate, note, version, personName, personNameProvided);
         }
     }
 

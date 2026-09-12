@@ -27,6 +27,37 @@ class EntryServiceTests {
     private static final String UUID_A = "11111111-2222-4333-8444-555555555555";
 
     @Test
+    void personNameIsTrimmedSavedSeparatelyAndCanBeCleared() {
+        var h = harness(MemberRole.OWNER);
+        when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.empty());
+        when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "人情", "ACTIVE")));
+        when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "微信", "ACTIVE")));
+        when(h.store.insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any())).thenReturn(40L);
+        when(h.store.find(40)).thenReturn(Optional.of(row(40, "500.00", 1, UUID_A, null, 0)));
+        when(h.store.update(anyLong(), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong(), any())).thenReturn(1);
+
+        h.service.create(h.actor, new EntryModels.EntryInput("EXPENSE", "500", 7, 8,
+                "2026-09-11", "婚礼", UUID_A, "  张三  "), "req");
+        verify(h.store).insert("EXPENSE", new BigDecimal("500.00"), 7, 8,
+                LocalDate.of(2026, 9, 11), "婚礼", UUID_A, 1, "张三");
+
+        h.service.update(h.actor, 40, new EntryModels.EntryUpdate("EXPENSE", "500", 7, 8,
+                "2026-09-11", "婚礼", 0L, "  ", true), "req");
+        verify(h.store).update(eq(40L), eq("EXPENSE"), eq(new BigDecimal("500.00")), eq(7L), eq(8L),
+                eq(LocalDate.of(2026, 9, 11)), eq("婚礼"), eq(1L), any(), eq(0L), isNull());
+    }
+
+    @Test
+    void personNameLengthCountsUnicodeCharactersAndRejectsOverflowBeforeWriting() {
+        assertEquals("😀".repeat(64), com.mytallybook.accountbook.common.validation.BookkeepingValidation.personName("😀".repeat(64)));
+        var h = harness(MemberRole.OWNER);
+        when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.empty());
+        assertCode(ErrorCode.VALIDATION_FAILED, () -> h.service.create(h.actor,
+                new EntryModels.EntryInput("EXPENSE", "500", 7, 8, "2026-09-11", null, UUID_A, "名".repeat(65)), "req"));
+        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
+    }
+
+    @Test
     void auditFailureEscapesTheTransactionAndRequestsRollback() {
         class RecordingTransactions extends org.springframework.transaction.support.AbstractPlatformTransactionManager {
             boolean rolledBack;
@@ -40,7 +71,7 @@ class EntryServiceTests {
         when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.empty());
         when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
-        when(h.store.insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong())).thenReturn(40L);
+        when(h.store.insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any())).thenReturn(40L);
         when(h.store.find(40)).thenReturn(Optional.of(row(40, "3.40", 1, UUID_A, null, 0)));
         doThrow(new IllegalStateException("audit unavailable")).when(h.audit).append(any());
 
@@ -56,7 +87,7 @@ class EntryServiceTests {
         var original = row(40, "3.40", 1, UUID_A, null, 0);
         var editedCurrent = row(40, "8.88", 1, UUID_A, null, 4);
         when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.empty(), Optional.of(editedCurrent));
-        when(h.store.insert(any(), any(), anyLong(), anyLong(), any(), any(), eq(UUID_A), anyLong()))
+        when(h.store.insert(any(), any(), anyLong(), anyLong(), any(), any(), eq(UUID_A), anyLong(), any()))
                 .thenReturn(40L);
         when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
@@ -68,7 +99,7 @@ class EntryServiceTests {
         assertEquals(first.id(), replay.id());
         assertEquals("8.88", replay.amount());
         assertEquals(4, replay.version());
-        verify(h.store, times(1)).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong());
+        verify(h.store, times(1)).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
         verify(h.audit, times(1)).append(any());
     }
 
@@ -79,7 +110,7 @@ class EntryServiceTests {
 
         assertCode(ErrorCode.ENTRY_IDEMPOTENCY_CONFLICT,
                 () -> h.service.create(h.actor, request("3.40", UUID_A), "req"));
-        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong());
+        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
         verifyNoInteractions(h.audit);
     }
 
@@ -91,7 +122,7 @@ class EntryServiceTests {
 
         assertCode(ErrorCode.ENTRY_IDEMPOTENCY_DELETED,
                 () -> h.service.create(h.actor, request("3.40", UUID_A), "req"));
-        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong());
+        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
         verifyNoInteractions(h.audit);
     }
 
@@ -102,11 +133,11 @@ class EntryServiceTests {
         when(h.store.find(40)).thenReturn(Optional.of(current));
         when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
-        when(h.store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(2L))).thenReturn(0);
+        when(h.store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(2L), any())).thenReturn(0);
         when(h.store.softDelete(eq(40L), any(), anyLong(), eq(2L))).thenReturn(0);
 
         assertCode(ErrorCode.ENTRY_VERSION_CONFLICT, () -> h.service.update(h.actor, 40,
-                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", "晚餐", 2L), "req-u"));
+                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", "晚餐", 2L, null, true), "req-u"));
         assertCode(ErrorCode.ENTRY_VERSION_CONFLICT, () -> h.service.delete(h.actor, 40, 2L, "req-d"));
         verifyNoInteractions(h.audit);
     }
@@ -120,10 +151,10 @@ class EntryServiceTests {
         when(h.store.find(41)).thenReturn(Optional.of(other));
         when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
-        when(h.store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(0L))).thenReturn(1);
+        when(h.store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(0L), any())).thenReturn(1);
 
         assertEquals("5.00", h.service.update(h.actor, 40,
-                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", null, 0L), "req").amount());
+                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", null, 0L, null, true), "req").amount());
         assertCode(ErrorCode.ACCESS_DENIED, () -> h.service.delete(h.actor, 41, 0L, "req"));
         verify(h.store, never()).softDelete(eq(41L), any(), anyLong(), anyLong());
     }
@@ -152,12 +183,12 @@ class EntryServiceTests {
         when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "旧分类", "DISABLED")));
         when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "旧账户", "DISABLED")));
         when(h.store.findCategory(9)).thenReturn(Optional.of(new EntryStore.CategoryReference(9, "EXPENSE", "停用分类", "DISABLED")));
-        when(h.store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(0L))).thenReturn(1);
+        when(h.store.update(eq(40L), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), eq(0L), any())).thenReturn(1);
 
         assertEquals(1, h.service.update(h.actor, 40,
-                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", null, 0L), "req").version());
+                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", null, 0L, null, true), "req").version());
         assertCode(ErrorCode.VALIDATION_FAILED, () -> h.service.update(h.actor, 40,
-                new EntryModels.EntryUpdate("EXPENSE", "5.00", 9, 8, "2026-09-06", null, 0L), "req"));
+                new EntryModels.EntryUpdate("EXPENSE", "5.00", 9, 8, "2026-09-06", null, 0L, null, true), "req"));
     }
 
     @Test
@@ -169,7 +200,7 @@ class EntryServiceTests {
 
         assertCode(ErrorCode.VALIDATION_FAILED,
                 () -> h.service.create(h.actor, request("3.40", UUID_A), "req"));
-        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong());
+        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
     }
 
     @ParameterizedTest
@@ -180,15 +211,15 @@ class EntryServiceTests {
 
         assertCode(ErrorCode.VALIDATION_FAILED,
                 () -> h.service.create(h.actor, request(amount, UUID_A), "req"));
-        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong());
+        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
     }
 
     @Test
     void createRejectsInvalidDateAndNoteBeyondFiveHundredCodePoints() {
         var h = harness(MemberRole.OWNER);
         when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.empty());
-        var invalidDate = new EntryModels.EntryInput("EXPENSE", "1.00", 7, 8, "2026-02-29", null, UUID_A);
-        var longNote = new EntryModels.EntryInput("EXPENSE", "1.00", 7, 8, "2026-09-06", "😀".repeat(501), UUID_A);
+        var invalidDate = new EntryModels.EntryInput("EXPENSE", "1.00", 7, 8, "2026-02-29", null, UUID_A, null);
+        var longNote = new EntryModels.EntryInput("EXPENSE", "1.00", 7, 8, "2026-09-06", "😀".repeat(501), UUID_A, null);
 
         assertCode(ErrorCode.VALIDATION_FAILED, () -> h.service.create(h.actor, invalidDate, "req"));
         assertCode(ErrorCode.VALIDATION_FAILED, () -> h.service.create(h.actor, longNote, "req"));
@@ -224,7 +255,7 @@ class EntryServiceTests {
     }
 
     private static EntryModels.EntryInput request(String amount, String uuid) {
-        return new EntryModels.EntryInput("EXPENSE", amount, 7, 8, "2026-09-06", "晚餐", uuid);
+        return new EntryModels.EntryInput("EXPENSE", amount, 7, 8, "2026-09-06", "晚餐", uuid, null);
     }
 
     private static EntryStore.EntryRow row(long id, String amount, long createdBy, String uuid,
@@ -232,7 +263,7 @@ class EntryServiceTests {
         return new EntryStore.EntryRow(id, "EXPENSE", new BigDecimal(amount), 7, "餐饮", "ACTIVE",
                 8, "现金", "ACTIVE", LocalDate.of(2026, 9, 6), "晚餐",
                 createdBy, "成员" + createdBy, Instant.parse("2026-09-06T01:00:00Z"),
-                Instant.parse("2026-09-06T01:00:00Z"), deletedAt, uuid, version);
+                Instant.parse("2026-09-06T01:00:00Z"), deletedAt, uuid, version, null);
     }
 
     private static CurrentUser actor(long userId, MemberRole role) {

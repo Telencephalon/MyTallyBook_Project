@@ -6,6 +6,7 @@
     <text>分类</text><picker disabled="{{loading || busy || canRetry}}" range="{{categories}}" range-key="name" bindchange="onCategoryChange"><view>{{categoryName || '请选择分类'}}</view></picker>
     <text>账户</text><picker disabled="{{loading || busy || canRetry}}" range="{{accounts}}" range-key="name" bindchange="onAccountChange"><view>{{accountName || '请选择账户'}}</view></picker>
     <text>日期</text><picker disabled="{{loading || busy || canRetry}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view>{{entryDate}}</view></picker>
+    <text>人名</text><input disabled="{{loading || busy || canRetry}}" maxlength="64" value="{{personName}}" placeholder="请输入人名（选填）" bindinput="onPersonNameInput"/>
     <text>备注</text><textarea disabled="{{loading || busy || canRetry}}" maxlength="500" value="{{note}}" bindinput="onNoteInput"/>
     <button class="button button-primary" loading="{{busy}}" disabled="{{loading || busy || canRetry}}" bindtap="onSubmit">保存账单</button>
     <button wx:if="{{canRetry}}" disabled="{{busy}}" bindtap="onRetry">使用原提交标识重试</button>

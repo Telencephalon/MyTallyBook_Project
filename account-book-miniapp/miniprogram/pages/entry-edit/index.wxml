@@ -8,6 +8,7 @@
     <text>账户</text><picker disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" range="{{accountOptions}}" range-key="name" bindchange="onAccountChange"><view>{{selectedAccountName || '请选择账户'}}</view></picker>
     <text wx:if="{{accountOptions.length && accountOptions[accountOptions.length-1].original}}">原账户已停用，仅本账单可保留</text>
     <text>日期</text><picker disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view>{{entryDate}}</view></picker>
+    <text>人名</text><input disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" maxlength="64" value="{{personName}}" placeholder="请输入人名（选填）" bindinput="onPersonNameInput"/>
     <text>备注</text><textarea disabled="{{!canEdit || loading || busy || canReload || canRetryRead}}" maxlength="500" value="{{note}}" bindinput="onNoteInput"/>
     <text wx:if="{{!canEdit}}">当前账单不可编辑</text>
     <button wx:if="{{canEdit}}" class="button button-primary" loading="{{busy}}" disabled="{{loading || busy || canReload}}" bindtap="onSubmit">保存修改</button>

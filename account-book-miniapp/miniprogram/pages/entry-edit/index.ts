@@ -16,7 +16,7 @@ Page({
   data: {
     id: 0, entryType: 'EXPENSE' as EntryType, amount: '', categoryId: 0, accountId: 0,
     selectedCategoryName: '', selectedAccountName: '',
-    entryDate: '', note: '', version: 0, categoryOptions: [] as Choice[], accountOptions: [] as Choice[],
+    entryDate: '', note: '', personName: '', version: 0, categoryOptions: [] as Choice[], accountOptions: [] as Choice[],
     loading: false, busy: false, canEdit: false, canReload: false, canRetryRead: false, errorMessage: '', requestId: '',
   },
   _active: true, _generation: 0, _writeOperation: 0, _dirty: false, _loadedId: 0, _loadedRevision: -1,
@@ -73,7 +73,7 @@ Page({
       accounts.push({ id: entry.accountId, name: `${entry.accountName}（已停用）`, status: entry.accountStatus, original: true })
     }
     this.setData({ entryType: entry.entryType, amount: entry.amount, categoryId: entry.categoryId,
-      accountId: entry.accountId, entryDate: entry.entryDate, note: entry.note || '', version: entry.version,
+      accountId: entry.accountId, entryDate: entry.entryDate, note: entry.note || '', personName: entry.personName || '', version: entry.version,
       selectedCategoryName: categories.find(item => item.id === entry.categoryId)?.name || entry.categoryName,
       selectedAccountName: accounts.find(item => item.id === entry.accountId)?.name || entry.accountName,
       categoryOptions: categories, accountOptions: accounts, canEdit: entry.canEdit, canReload: false, canRetryRead: false })
@@ -85,6 +85,9 @@ Page({
   },
   onAmountInput(event: WechatMiniprogram.Input) {
     if (!this.formLocked()) { this._dirty = true; this.setData({ amount: event.detail.value }) }
+  },
+  onPersonNameInput(event: WechatMiniprogram.Input) {
+    if (!this.formLocked()) { this._dirty = true; this.setData({ personName: event.detail.value }) }
   },
   onNoteInput(event: WechatMiniprogram.Input) {
     if (!this.formLocked()) { this._dirty = true; this.setData({ note: event.detail.value }) }

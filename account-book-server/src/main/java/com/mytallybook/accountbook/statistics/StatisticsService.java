@@ -141,6 +141,7 @@ public class StatisticsService {
                                         String rawEntryType) {
         var period = StatisticsPeriod.parse(month, range, startDate, endDate, clock);
         String entryType = rawEntryType == null ? "EXPENSE"
+                : "ALL".equals(rawEntryType) ? null
                 : BookkeepingValidation.oneOf(rawEntryType, ENTRY_TYPES);
         return new RankingInputs(period, entryType);
     }
@@ -155,7 +156,7 @@ public class StatisticsService {
         var items = rows.stream().map(row -> new StatisticsModels.RankingItem(
                 BookkeepingValidation.safeId(row.id()), row.name(), money(row.amount()),
                 percentage(row.amount(), total), row.entryCount())).toList();
-        return new StatisticsModels.Ranking(period.monthText(), entryType, money(total), items,
+        return new StatisticsModels.Ranking(period.monthText(), entryType == null ? "ALL" : entryType, money(total), items,
                 period.rangeTypeText(), text(metadata.startDate()), text(metadata.endDate()));
     }
 

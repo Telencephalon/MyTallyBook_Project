@@ -8,14 +8,15 @@ import { toErrorView } from '../../utils/presentation'
 Page({
   data: {
     entryType: 'EXPENSE' as EntryType,
-    amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '', entryDate: '', note: '',
+    amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '', entryDate: '', note: '', personName: '', favorPreset: false, lifePreset: false,
     categories: [] as Category[], accounts: [] as Account[],
     loading: false, busy: false, canRetry: false, canRetryRead: false, errorMessage: '', requestId: '',
   },
   _active: true, _generation: 0, _dictionaryGeneration: 0, _loadedRevision: -1,
   _intent: null as EntryCreateIntent | null,
 
-  onLoad() {
+  onLoad(query: Record<string, string | undefined> = {}) {
+    this.setData({ favorPreset: query.preset === 'favor', lifePreset: query.preset === 'life' })
     this.setData({ entryDate: shanghaiToday() })
     try {
       this._intent = getRuntime().entries.newCreateIntent()
@@ -41,7 +42,7 @@ Page({
       this._intent?.abandon()
       this._intent = runtime.entries.newCreateIntent()
       this.setData({ entryType: 'EXPENSE', amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '',
-        entryDate: shanghaiToday(), note: '', canRetry: false })
+        entryDate: shanghaiToday(), note: '', personName: '', canRetry: false })
     }
     this._loadedRevision = revision
     const completed = this._intent?.completedResult() ?? null
@@ -89,8 +90,10 @@ Page({
         runtime.catalog.accounts('ACTIVE'),
       ])
       if (current()) {
-        const categoryId = this.data.categoryId || categories.items[0]?.id || 0
-        const accountId = this.data.accountId || accounts.items[0]?.id || 0
+        const defaultCategory = this.data.favorPreset ? categories.items.find(item => item.name === '人情') : this.data.lifePreset ? categories.items.find(item => item.name === '居住') : categories.items[0]
+        const categoryId = this.data.categoryId || defaultCategory?.id || 0
+        const defaultAccount = this.data.favorPreset ? accounts.items.find(item => item.name === '微信') : accounts.items[0]
+        const accountId = this.data.accountId || defaultAccount?.id || 0
         this.setData({
         categories: categories.items,
         accounts: accounts.items,
@@ -121,6 +124,7 @@ Page({
     await this.loadDictionaries()
   },
   onAmountInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ amount: event.detail.value }) },
+  onPersonNameInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ personName: event.detail.value }) },
   onNoteInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ note: event.detail.value }) },
   onDateChange(event: WechatMiniprogram.PickerChange) { if (!this.formLocked()) this.setData({ entryDate: String(event.detail.value) }) },
   onCategoryChange(event: WechatMiniprogram.PickerChange) {

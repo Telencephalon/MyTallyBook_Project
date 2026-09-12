@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 
 class JdbcCategoryStoreTests {
     @Test
-    void listAndReferenceQueriesStayInLedgerAndIncludeDeletedEntries() {
+    void listAndReferenceQueriesStayInLedgerAndIgnoreDeletedEntries() {
         var jdbc = mock(JdbcTemplate.class);
         var store = new JdbcCategoryStore(jdbc);
         store.list("EXPENSE", "ACTIVE");
@@ -25,7 +25,7 @@ class JdbcCategoryStoreTests {
         verify(jdbc).queryForObject(sql.capture(), eq(Long.class), eq(7L));
         assertThat(normalize(sql.getValue()))
                 .contains("ledger_id = 1", "category_id = ?")
-                .doesNotContain("deleted_at");
+                .contains("deleted_at IS NULL");
     }
 
     private static String normalize(String sql) {

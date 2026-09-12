@@ -8,11 +8,11 @@
   <view class="card form">
     <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput" disabled="{{loading || busy}}"/>
     <text>收支类型{{editing ? '（不可修改）' : ''}}</text>
-    <picker disabled="{{editing || loading || busy}}" range="{{['EXPENSE','INCOME']}}" bindchange="onTypeChange"><view>{{entryType}}</view></picker>
+    <picker disabled="{{editing || loading || busy}}" range="{{['支出','收入']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : '收入'}}</view></picker>
     <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput" disabled="{{loading || busy}}"/>
     <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput" disabled="{{loading || busy}}"/>
     <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput" disabled="{{loading || busy}}"/>
-    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" disabled="{{loading || busy}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
+    <text>状态</text><picker range="{{['启动','禁用']}}" disabled="{{loading || busy}}" bindchange="onStatusChange"><view>{{status === 'ACTIVE' ? '启动' : '禁用'}}</view></picker>
     <button loading="{{busy}}" disabled="{{!canManage || loading || busy || canRetryRead}}" bindtap="onSubmit">保存</button>
   </view>
 </view>

@@ -102,6 +102,7 @@ public class CategoryService {
         requireManager(writeGuard.lock().requireActor(actor));
         store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND));
         if (store.referenceCount(id) > 0) throw error(ErrorCode.RESOURCE_IN_USE);
+        store.purgeDeletedReferences(id);
         if (store.delete(id) != 1) throw error(ErrorCode.RESOURCE_STATE_CHANGED);
         append(actor, "CATEGORY_DELETE", id, requestId, Map.of());
     }

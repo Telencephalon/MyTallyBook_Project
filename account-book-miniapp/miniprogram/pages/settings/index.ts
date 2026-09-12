@@ -13,6 +13,7 @@ Page({
     nickname: '',
     roleLabel: '',
     ledgerName: '',
+    currency: '', timezone: '', maxMembers: 0,
     version: APP_INFO.version,
     canManageInvites: false,
     errorMessage: '',
@@ -20,6 +21,8 @@ Page({
   },
 
   async onShow() {
+    this.getTabBar?.()?.setData({ selected: 3 })
+
     this._active = true
     ++this._generation
     this.setData({ loading: false })
@@ -64,6 +67,9 @@ Page({
       nickname: user ? user.displayName?.trim() || user.nickname : '',
       roleLabel: user ? roleLabel(user.role) : '',
       ledgerName: ledger?.name ?? '',
+      currency: ledger?.currency ?? '',
+      timezone: ledger?.timezone ?? '',
+      maxMembers: ledger?.maxMembers ?? 0,
       canManageInvites: user?.role === 'OWNER' || user?.role === 'ADMIN',
       ...(clearError ? { errorMessage: '', requestId: '' } : {}),
     })

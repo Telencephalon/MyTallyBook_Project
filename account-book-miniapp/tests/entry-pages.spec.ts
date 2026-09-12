@@ -76,7 +76,51 @@ async function loadPage(name: PageName, runtime: ReturnType<typeof runtimeFor>, 
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('entry create page', () => {
+  it('opens the favor shortcut with named defaults and submits a separate person name', async () => {
+    const runtime = runtimeFor()
+    runtime.catalog.categories.mockResolvedValue({ items: [category, { ...category, id: 9, name: '人情' }] })
+    runtime.catalog.accounts.mockResolvedValue({ items: [account, { ...account, id: 10, name: '微信' }] })
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'favor' }); await page.onShow()
+    expect(page.data).toMatchObject({ entryType: 'EXPENSE', categoryId: 9, accountId: 10,
+      categoryName: '人情', accountName: '微信', amount: '', note: '', personName: '', entryDate: shanghaiToday() })
+    expect(runtime.entries.create).not.toHaveBeenCalled()
+    page.onAmountInput({ detail: { value: '500' } })
+    page.onPersonNameInput({ detail: { value: '  张三  ' } })
+    page.onNoteInput({ detail: { value: '婚礼' } })
+    await page.onSubmit()
+    expect(runtime.entries.create).toHaveBeenCalledWith(expect.objectContaining({
+      personName: '张三', note: '婚礼', categoryId: 9, accountId: 10, amount: '500',
+    }))
+  })
+
+  it('leaves missing favor defaults unselected and preserves later user choices', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'favor' }); await page.onShow()
+    expect(page.data).toMatchObject({ categoryId: 0, accountId: 0 })
+    page.onCategoryChange({ detail: { value: 0 } })
+    page.onAccountChange({ detail: { value: 0 } })
+    page.onPersonNameInput({ detail: { value: '李四' } })
+    page.onHide(); await page.onShow()
+    expect(page.data).toMatchObject({ categoryId: 7, accountId: 8, personName: '李四' })
+    runtime.setRevision(2)
+    await page.onShow()
+    expect(page.data.personName).toBe('')
+  })
+
+  it('loads and updates the person name without merging it into the note', async () => {
+    const runtime = runtimeFor()
+    runtime.entries.detail.mockResolvedValue({ ...entry, personName: '张三' })
+    const page = await loadPage('entry-edit', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    expect(page.data.personName).toBe('张三')
+    page.onPersonNameInput({ detail: { value: '李四' } })
+    await page.onSubmit()
+    expect(runtime.entries.update).toHaveBeenCalledWith(40, expect.objectContaining({ personName: '李四', note: '晚餐' }))
+  })
   it('renders runtime configuration failures at page entry without throwing', async () => {
+    const { AppError } = await import('../miniprogram/types/error')
     let definition: PageShape | undefined
     const request = vi.fn()
     vi.stubGlobal('Page', (value: PageShape) => { definition = value })

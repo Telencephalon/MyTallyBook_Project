@@ -90,8 +90,13 @@ public class JdbcCategoryStore implements CategoryStore {
     @Override
     public long referenceCount(long id) {
         Long count = jdbc().queryForObject(
-                "SELECT COUNT(*) FROM book_entry WHERE ledger_id = 1 AND category_id = ?", Long.class, id);
+                "SELECT COUNT(*) FROM book_entry WHERE ledger_id = 1 AND category_id = ? AND deleted_at IS NULL", Long.class, id);
         return count == null ? 0 : count;
+    }
+
+    @Override
+    public int purgeDeletedReferences(long id) {
+        return jdbc().update("DELETE FROM book_entry WHERE ledger_id = 1 AND category_id = ? AND deleted_at IS NOT NULL", id);
     }
 
     @Override

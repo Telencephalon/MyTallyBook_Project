@@ -1,4 +1,4 @@
-<view class="page statistics-page">
+<view class="page statistics-page tab-page">
   <view class="filter-card card">
     <view class="filter-item">
       <text class="filter-label">统计范围</text>
@@ -13,7 +13,7 @@
       </picker>
     </view>
     <view class="filter-item">
-      <text class="filter-label">排行方向</text>
+      <text class="filter-label">收支类型</text>
       <picker range="{{directionLabels}}" value="{{directionIndex}}" bindchange="onDirectionChange">
         <view class="picker-value">{{directionLabels[directionIndex]}}</view>
       </picker>

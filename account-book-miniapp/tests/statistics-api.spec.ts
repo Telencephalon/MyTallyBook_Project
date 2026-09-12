@@ -21,6 +21,15 @@ describe('statistics wire contract', () => {
     ])
   })
 
+  it('encodes the all ranking direction without an income or expense filter', async () => {
+    const request = vi.fn().mockResolvedValue({ items: [] })
+    const api = new StatisticsApi({ request } as never)
+    await api.categories({ month: '2024-09' }, 'ALL')
+    await api.members({ month: '2024-09' }, 'ALL')
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ path: '/api/v1/statistics/categories?month=2024-09&entryType=ALL' }))
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/statistics/members?month=2024-09&entryType=ALL' }))
+  })
+
   it('omits optional query values and lets the server apply defaults', async () => {
     const request = vi.fn().mockResolvedValue({})
     const api = new StatisticsApi({ request } as never)

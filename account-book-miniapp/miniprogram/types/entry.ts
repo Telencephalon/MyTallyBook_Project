@@ -11,6 +11,7 @@ export interface Entry {
   accountName: string
   accountStatus: ResourceStatus
   entryDate: string
+  personName?: string | null
   note: string | null
   createdBy: number
   creatorName: string
@@ -44,6 +45,7 @@ export interface CreateEntryDraft {
   categoryId: number
   accountId: number
   entryDate: string
+  personName?: string | null
   note: string | null
 }
 export interface CreateEntry extends CreateEntryDraft { clientRequestId: string }

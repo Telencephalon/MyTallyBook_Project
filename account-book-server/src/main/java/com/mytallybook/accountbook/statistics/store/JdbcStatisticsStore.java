@@ -73,8 +73,9 @@ public class JdbcStatisticsStore implements StatisticsStore {
                 FROM book_entry e JOIN category c ON c.id=e.category_id AND c.ledger_id=e.ledger_id
                 WHERE e.ledger_id=1 AND e.deleted_at IS NULL
                 """, period);
-        query.sql += " AND e.entry_type=? GROUP BY c.id,c.name ORDER BY amount DESC,c.id ASC";
-        query.arguments.add(entryType);
+        query.sql += (entryType == null ? "" : " AND e.entry_type=?")
+                + " GROUP BY c.id,c.name ORDER BY amount DESC,c.id ASC";
+        if (entryType != null) query.arguments.add(entryType);
         return jdbc().query(query.sql, rankingMapper(), query.arguments.toArray());
     }
 
@@ -105,8 +106,9 @@ public class JdbcStatisticsStore implements StatisticsStore {
                 LEFT JOIN ledger_member lm ON lm.ledger_id=e.ledger_id AND lm.user_id=e.created_by
                 WHERE e.ledger_id=1 AND e.deleted_at IS NULL
                 """, period);
-        query.sql += " AND e.entry_type=? GROUP BY e.created_by,name ORDER BY amount DESC,e.created_by ASC";
-        query.arguments.add(entryType);
+        query.sql += (entryType == null ? "" : " AND e.entry_type=?")
+                + " GROUP BY e.created_by,name ORDER BY amount DESC,e.created_by ASC";
+        if (entryType != null) query.arguments.add(entryType);
         return jdbc().query(query.sql, rankingMapper(), query.arguments.toArray());
     }
 

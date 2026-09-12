@@ -1,6 +1,5 @@
 import { getRuntime } from '../../runtime'
-import type { EntryType } from '../../types/catalog'
-import type { AccountStatisticsItem, DailyStatisticsItem, MonthlySummary, RankingItem, StatisticsQuery } from '../../types/statistics'
+import type { AccountStatisticsItem, DailyStatisticsItem, MonthlySummary, RankingItem, RankingDirection, StatisticsQuery } from '../../types/statistics'
 import { shanghaiToday } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
@@ -58,9 +57,9 @@ Page({
     dailyTotalDays: 0,
     dailyTotalPages: 0,
     dailyHasNext: false,
-    entryType: 'EXPENSE' as EntryType,
-    directionIndex: 0,
-    directionLabels: ['支出', '收入'],
+    entryType: 'ALL' as RankingDirection,
+    directionIndex: 2,
+    directionLabels: ['支出', '收入', '全部'],
     summary: null as MonthlySummary | null,
     daily: [] as DailyStatisticsItem[],
     categoryTotal: '0.00',
@@ -80,6 +79,8 @@ Page({
   _fullLoadGeneration: 0,
 
   async onShow() {
+    this.getTabBar?.()?.setData({ selected: 2 })
+
     this._active = true
     if (!this._hasExplicitScope && this.data.month === this._defaultMonthAtDefinition) {
       const month = currentMonth()
@@ -325,8 +326,8 @@ Page({
 
   async onDirectionChange(event: WechatMiniprogram.PickerChange) {
     const needsFullLoad = this._fullLoadGeneration !== 0 || this.data.summary === null
-    const directionIndex = Number(event.detail.value) === 1 ? 1 : 0
-    this.setData({ directionIndex, entryType: directionIndex === 1 ? 'INCOME' : 'EXPENSE' })
+    const directionIndex = Math.min(2, Math.max(0, Number(event.detail.value)))
+    this.setData({ directionIndex, entryType: directionIndex === 2 ? 'ALL' : directionIndex === 1 ? 'INCOME' : 'EXPENSE' })
     if (needsFullLoad) await this.loadAll()
     else await this.loadRankings()
   },

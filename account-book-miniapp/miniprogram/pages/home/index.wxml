@@ -1,4 +1,4 @@
-<view class="page home-page">
+<view class="page home-page tab-page">
   <view class="hero-card">
     <text class="hero-kicker">固定共享账本</text>
     <text class="hero-title">{{ledgerName || '正在加载账本'}}</text>
@@ -11,51 +11,12 @@
     <button class="button button-secondary" loading="{{loading}}" disabled="{{loading}}" bindtap="retry">重新加载</button>
   </view>
 
-  <view class="section" wx:if="{{ledgerName}}">
-    <text class="section-title">账本信息</text>
-    <view class="card info-grid">
-      <view class="info-item">
-        <text class="info-label">币种</text>
-        <text class="info-value">{{currency}}</text>
-      </view>
-      <view class="info-item">
-        <text class="info-label">时区</text>
-        <text class="info-value">{{timezone}}</text>
-      </view>
-      <view class="info-item">
-        <text class="info-label">成员上限</text>
-        <text class="info-value">{{maxMembers}} 人</text>
-      </view>
+  <view class="section">
+    <text class="section-title">快捷记账</text>
+    <view class="card catalog-actions">
+      <button class="button button-primary" disabled="{{loading || loggingOut || !displayName}}" bindtap="openFavorEntry">人情记账</button>
+      <button class="button button-secondary" disabled="{{loading || loggingOut || !displayName}}" bindtap="openLifeEntry">生活记账</button>
     </view>
-  </view>
-
-  <view class="section" wx:if="{{displayName}}">
-    <text class="section-title">我的身份</text>
-    <view class="card identity-card">
-      <view>
-        <text class="identity-name">{{displayName}}</text>
-        <text class="identity-role">{{memberRoleLabel}}</text>
-      </view>
-      <button class="compact-button" bindtap="openProfile">个人资料</button>
-    </view>
-  </view>
-
-  <view class="section" wx:if="{{displayName}}">
-    <view class="section-heading">
-      <text class="section-title">本月收支</text>
-      <button class="text-button" bindtap="openStatistics">查看统计</button>
-    </view>
-    <view class="error-panel" wx:if="{{summaryError}}">
-      <text class="error-message">{{summaryError}}</text>
-      <text class="request-id" wx:if="{{summaryRequestId}}" user-select="true">请求编号：{{summaryRequestId}}</text>
-      <button class="button button-secondary" loading="{{summaryLoading}}" disabled="{{summaryLoading}}" bindtap="retrySummary">重试</button>
-    </view>
-    <view class="card summary-grid" wx:elif="{{summary}}">
-      <view class="summary-item income"><text class="summary-label">收入</text><text class="summary-value">¥{{summary.income}}</text></view>
-      <view class="summary-item expense"><text class="summary-label">支出</text><text class="summary-value">¥{{summary.expense}}</text></view>
-      <view class="summary-item"><text class="summary-label">结余</text><text class="summary-value">¥{{summary.net}}</text></view>
-    </view>
-    <view class="card loading-card" wx:else><text>{{summaryLoading ? '正在加载本月汇总…' : '暂无汇总'}}</text></view>
   </view>
 
   <view class="section" wx:if="{{displayName}}">
@@ -75,14 +36,6 @@
       </view>
     </view>
     <view class="card loading-card" wx:else><text>{{recentLoading ? '正在加载最近账单…' : '还没有账单'}}</text></view>
-  </view>
-
-  <view class="section" wx:if="{{displayName}}">
-    <text class="section-title">共享与成员</text>
-    <view class="card">
-      <button class="button button-secondary" disabled="{{loading || loggingOut}}" bindtap="openMembers">成员与名额</button>
-      <button wx:if="{{canManageInvites}}" class="button button-primary" disabled="{{loading || loggingOut}}" bindtap="openInvites">邀请管理</button>
-    </view>
   </view>
 
   <view class="section">

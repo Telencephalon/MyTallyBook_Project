@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
     [string]$JarPath,
-    [string]$Server = '__API_DOMAIN__',
+    [string]$Server = '117.72.101.42',
     [string]$SshUser = 'root',
     [ValidateRange(1, 65535)]
     [int]$SshPort = 22,

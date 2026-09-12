@@ -61,7 +61,7 @@ class DatabaseMigrationTests {
     void migrationHistoryPreservesV1AndRecordsV2() throws SQLException {
         try (Connection connection = connection()) {
             assertEquals(
-                    List.of("1:1", "2:1"),
+                    List.of("1:1", "2:1", "3:1"),
                     queryStrings(connection, """
                             SELECT CONCAT(version, ':', success)
                             FROM flyway_schema_history
@@ -187,10 +187,14 @@ class DatabaseMigrationTests {
                 long accountId = scalarLong(connection, "SELECT id FROM fund_account WHERE ledger_id = 1");
                 var store = new JdbcEntryStore(new JdbcTemplate(new SingleConnectionDataSource(connection, true)));
                 long entryId = store.insert("EXPENSE", new BigDecimal("3.40"), categoryId, accountId,
-                        LocalDate.of(2026, 9, 6), "migration entry", "11111111-2222-4333-8444-555555555555", creatorId);
+                        LocalDate.of(2026, 9, 6), "migration entry", "11111111-2222-4333-8444-555555555555", creatorId, "张三");
                 var row = store.find(entryId).orElseThrow();
                 assertEquals(creatorId, row.createdBy());
                 assertEquals(new BigDecimal("3.40"), row.amount());
+                assertEquals("张三", row.personName());
+                store.update(entryId, "EXPENSE", new BigDecimal("3.40"), categoryId, accountId,
+                        row.entryDate(), row.note(), creatorId, java.time.Instant.now(), row.version(), "李四");
+                assertEquals("李四", store.find(entryId).orElseThrow().personName());
             } finally {
                 connection.rollback();
             }

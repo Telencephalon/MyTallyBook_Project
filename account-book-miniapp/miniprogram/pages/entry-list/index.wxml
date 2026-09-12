@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page tab-page">
   <view class="card filters">
     <picker mode="date" value="{{dateFrom}}" bindchange="onDateFrom"><view>开始日期：{{dateFrom || '不限'}}</view></picker>
     <picker mode="date" value="{{dateTo}}" bindchange="onDateTo"><view>结束日期：{{dateTo || '不限'}}</view></picker>

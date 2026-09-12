@@ -1,6 +1,5 @@
-import type { EntryType } from '../types/catalog'
 import { AppError } from '../types/error'
-import type { AccountStatistics, DailyTrend, MonthlySummary, RankingStatistics, StatisticsQuery } from '../types/statistics'
+import type { AccountStatistics, DailyTrend, MonthlySummary, RankingStatistics, StatisticsQuery, RankingDirection } from '../types/statistics'
 import type { HttpClient } from './http'
 
 const MONTH = /^[1-9]\d{3}-(0[1-9]|1[0-2])$/
@@ -66,7 +65,7 @@ function rangeQuery(input?: QueryInput, includePage = false): string {
   return parts.length ? `?${parts.join('&')}` : ''
 }
 
-function rankingQuery(input?: QueryInput, entryType?: EntryType): string {
+function rankingQuery(input?: QueryInput, entryType?: RankingDirection): string {
   const parts = queryParts(input)
   if (entryType !== undefined) parts.push(`entryType=${entryType}`)
   return parts.length ? `?${parts.join('&')}` : ''
@@ -83,7 +82,7 @@ export class StatisticsApi {
     return this.http.request({ method: 'GET', path: `/api/v1/statistics/daily-trend${rangeQuery(query, true)}` })
   }
 
-  async categories(query?: QueryInput, entryType?: EntryType): Promise<RankingStatistics> {
+  async categories(query?: QueryInput, entryType?: RankingDirection): Promise<RankingStatistics> {
     return this.http.request({ method: 'GET', path: `/api/v1/statistics/categories${rankingQuery(query, entryType)}` })
   }
 
@@ -91,7 +90,7 @@ export class StatisticsApi {
     return this.http.request({ method: 'GET', path: `/api/v1/statistics/accounts${rangeQuery(query)}` })
   }
 
-  async members(query?: QueryInput, entryType?: EntryType): Promise<RankingStatistics> {
+  async members(query?: QueryInput, entryType?: RankingDirection): Promise<RankingStatistics> {
     return this.http.request({ method: 'GET', path: `/api/v1/statistics/members${rankingQuery(query, entryType)}` })
   }
 }

@@ -21,7 +21,12 @@ Page({
     loading: false, loadState: 'loading' as LoadState, errorMessage: '', requestId: '',
   },
   _active: true, _generation: 0,
-  async onShow() { this._active = true; this.setData({ loading: false }); await this.load(true) },
+  async onShow() {
+    this.getTabBar?.()?.setData({ selected: 1 })
+    this._active = true
+    this.setData({ loading: false })
+    await this.load(true)
+  },
   onHide() { this._active = false; ++this._generation; this.setData({ loading: false }) },
   onUnload() { this._active = false; ++this._generation; this.setData({ loading: false }) },
 

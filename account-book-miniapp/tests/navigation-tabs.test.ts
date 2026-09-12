@@ -26,8 +26,11 @@ afterEach(() => {
 describe('four-tab navigation contract', () => {
   it('registers exactly the approved four tab roots and keeps editor pages out', () => {
     const config = JSON.parse(readFileSync(new URL('../miniprogram/app.json', import.meta.url), 'utf8')) as {
-      tabBar?: { list?: Array<{ pagePath: string; text: string }> }
+      tabBar?: { custom?: boolean; list?: Array<{ pagePath: string; text: string }> }
+      usingComponents?: Record<string, string>
     }
+    expect(config.tabBar?.custom).toBe(true)
+    expect(config.usingComponents).toEqual({})
     expect(config.tabBar?.list).toEqual([
       { pagePath: 'pages/home/index', text: '首页' },
       { pagePath: 'pages/entry-list/index', text: '明细' },

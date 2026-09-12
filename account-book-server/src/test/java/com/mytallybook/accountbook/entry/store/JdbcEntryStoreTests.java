@@ -16,6 +16,44 @@ import static org.mockito.Mockito.*;
 
 class JdbcEntryStoreTests {
     @Test
+    void personNameIsBoundSeparatelyForInsertAndUpdateAndReadFromTheRow() throws Exception {
+        var jdbc = mock(JdbcTemplate.class);
+        var store = new JdbcEntryStore(jdbc);
+        when(jdbc.update(any(org.springframework.jdbc.core.PreparedStatementCreator.class), any(org.springframework.jdbc.support.KeyHolder.class)))
+                .thenAnswer(call -> {
+                    ((org.springframework.jdbc.support.KeyHolder) call.getArgument(1)).getKeyList().add(java.util.Map.of("id", 40L));
+                    return 1;
+                });
+        assertThat(store.insert("EXPENSE", new BigDecimal("500.00"), 7, 8,
+                LocalDate.of(2026, 9, 11), "婚礼", "uuid", 2, "张三")).isEqualTo(40);
+        var creator = ArgumentCaptor.forClass(org.springframework.jdbc.core.PreparedStatementCreator.class);
+        verify(jdbc).update(creator.capture(), any(org.springframework.jdbc.support.KeyHolder.class));
+        var connection = mock(java.sql.Connection.class);
+        var statement = mock(java.sql.PreparedStatement.class);
+        when(connection.prepareStatement(anyString(), eq(java.sql.Statement.RETURN_GENERATED_KEYS))).thenReturn(statement);
+        creator.getValue().createPreparedStatement(connection);
+        verify(statement).setString(6, "婚礼");
+        verify(statement).setString(10, "张三");
+
+        var now = Instant.parse("2026-09-11T01:00:00Z");
+        store.update(40, "EXPENSE", new BigDecimal("500.00"), 7, 8, LocalDate.of(2026, 9, 11), "婚礼", 2, now, 0, "李四");
+        var args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).update(anyString(), args.capture());
+        assertThat(args.getValue()).containsExactly("EXPENSE", new BigDecimal("500.00"), 7L, 8L,
+                java.sql.Date.valueOf("2026-09-11"), "婚礼", "李四", 2L, java.sql.Timestamp.from(now), 40L, 0L);
+
+        store.find(40);
+        var mapper = ArgumentCaptor.forClass(RowMapper.class);
+        verify(jdbc).query(anyString(), mapper.capture(), eq(40L));
+        var row = mock(java.sql.ResultSet.class);
+        when(row.getDate("entry_date")).thenReturn(java.sql.Date.valueOf("2026-09-11"));
+        when(row.getTimestamp("created_at")).thenReturn(java.sql.Timestamp.from(now));
+        when(row.getTimestamp("updated_at")).thenReturn(java.sql.Timestamp.from(now));
+        when(row.getString("person_name")).thenReturn("李四");
+        assertThat(((EntryStore.EntryRow) mapper.getValue().mapRow(row, 0)).personName()).isEqualTo("李四");
+    }
+
+    @Test
     void listCountAndDetailStayInLedgerUseHistoricalJoinsAndDeterministicOrder() {
         var jdbc = mock(JdbcTemplate.class);
         var store = new JdbcEntryStore(jdbc);
@@ -59,7 +97,7 @@ class JdbcEntryStoreTests {
 
         store.findByClientRequestId("11111111-2222-4333-8444-555555555555");
         store.update(40, "EXPENSE", new BigDecimal("3.40"), 7, 8,
-                LocalDate.of(2026, 9, 6), null, 2, now, 3);
+                LocalDate.of(2026, 9, 6), null, 2, now, 3, null);
         store.softDelete(40, now, 2, 3);
 
         var querySql = ArgumentCaptor.forClass(String.class);
@@ -68,7 +106,7 @@ class JdbcEntryStoreTests {
         var updateSql = ArgumentCaptor.forClass(String.class);
         verify(jdbc, times(2)).update(updateSql.capture(), any(Object[].class));
         assertThat(normalize(updateSql.getAllValues().get(0)))
-                .isEqualTo("UPDATE book_entry SET entry_type=?,amount=?,category_id=?,account_id=?,entry_date=?,note=?,updated_by=?,updated_at=?,version=version+1 WHERE ledger_id=1 AND id=? AND deleted_at IS NULL AND version=?");
+                .isEqualTo("UPDATE book_entry SET entry_type=?,amount=?,category_id=?,account_id=?,entry_date=?,note=?,person_name=?,updated_by=?,updated_at=?,version=version+1 WHERE ledger_id=1 AND id=? AND deleted_at IS NULL AND version=?");
         assertThat(normalize(updateSql.getAllValues().get(1)))
                 .isEqualTo("UPDATE book_entry SET deleted_at=?,updated_at=?,updated_by=?,version=version+1 WHERE ledger_id=1 AND id=? AND deleted_at IS NULL AND version=?");
     }

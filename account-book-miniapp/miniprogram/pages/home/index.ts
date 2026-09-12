@@ -1,7 +1,6 @@
 import { getRuntime } from '../../runtime'
 import type { Ledger, UserProfile } from '../../types/api'
 import type { Entry } from '../../types/entry'
-import type { MonthlySummary } from '../../types/statistics'
 import { AppError } from '../../types/error'
 import { roleLabel, toErrorView } from '../../utils/presentation'
 import { navigateToPage } from '../../utils/navigation'
@@ -10,7 +9,6 @@ Page({
   _active: true,
   _generation: 0,
   _logoutOperation: 0,
-  _summaryOperation: 0,
   _recentOperation: 0,
   data: {
     loading: false,
@@ -24,11 +22,7 @@ Page({
     maxMembers: 0,
     canManageInvites: false,
     canManageCatalog: false,
-    summaryLoading: false,
     recentLoading: false,
-    summary: null as MonthlySummary | null,
-    summaryError: '',
-    summaryRequestId: '',
     recentEntries: [] as Entry[],
     recentError: '',
     recentRequestId: '',
@@ -37,11 +31,12 @@ Page({
   },
 
   async onShow() {
+    this.getTabBar?.()?.setData({ selected: 0 })
+
     this._active = true
     ++this._generation
     this.setData({
-      loading: false, summaryLoading: false, recentLoading: false,
-      summary: null, summaryError: '', summaryRequestId: '',
+      loading: false, recentLoading: false,
       recentEntries: [], recentError: '', recentRequestId: '',
     })
     if (!this.data.loggingOut) await this.loadContext(true)
@@ -75,7 +70,7 @@ Page({
     let ledger = runtime.session.getLedger()
     if (user && ledger && !forceRefresh) {
       this.showContext(user, ledger)
-      await this.loadBookkeeping(isCurrent)
+      await this.loadRecent(isCurrent)
       return
     }
 
@@ -93,7 +88,7 @@ Page({
         )
       }
       this.showContext(user, ledger)
-      await this.loadBookkeeping(isCurrent)
+      await this.loadRecent(isCurrent)
     } catch (error) {
       if (!isCurrent()) return
       const errorView = toErrorView(error)
@@ -103,31 +98,6 @@ Page({
       })
     } finally {
       if (isCurrent()) this.setData({ loading: false })
-    }
-  },
-
-  async loadBookkeeping(isCurrent?: () => boolean) {
-    await Promise.all([this.loadSummary(isCurrent), this.loadRecent(isCurrent)])
-  },
-
-  async loadSummary(isCurrent?: () => boolean) {
-    const runtime = getRuntime()
-    const generation = this._generation
-    const revision = runtime.session.getRevision()
-    const operation = ++this._summaryOperation
-    const currentPage = isCurrent ?? (() => this._active && generation === this._generation
-      && revision === runtime.session.getRevision())
-    const current = () => operation === this._summaryOperation && currentPage()
-    this.setData({ summaryLoading: true, summaryError: '', summaryRequestId: '' })
-    try {
-      const value = await runtime.statistics.summary()
-      if (current()) this.setData({ summary: value, summaryError: '', summaryRequestId: '' })
-    } catch (error) {
-      if (!current()) return
-      const view = toErrorView(error)
-      this.setData({ summary: null, summaryError: view.message, summaryRequestId: view.requestId })
-    } finally {
-      if (current()) this.setData({ summaryLoading: false })
     }
   },
 
@@ -150,10 +120,6 @@ Page({
     } finally {
       if (current()) this.setData({ recentLoading: false })
     }
-  },
-
-  async retrySummary() {
-    await this.loadSummary()
   },
 
   async retryRecent() {
@@ -201,6 +167,16 @@ Page({
 
   openEntries() {
     if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) navigateToPage('/pages/entry-list/index')
+  },
+
+  openFavorEntry() {
+    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) {
+      wx.navigateTo({ url: '/pages/entry-create/index?preset=favor' })
+    }
+  },
+
+  openLifeEntry() {
+    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) wx.navigateTo({ url: '/pages/entry-create/index?preset=life' })
   },
 
   openEntryCreate() {
