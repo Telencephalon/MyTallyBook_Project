@@ -1,4 +1,5 @@
 import { getRuntime } from '../../runtime'
+import { APP_INFO } from '../../config/app-info'
 import type { Account, Category, EntryType } from '../../types/catalog'
 import type { CreatorOption, Entry } from '../../types/entry'
 import { pageGuard } from '../../utils/page-guard'
@@ -13,6 +14,10 @@ function resourceLabel(name: string, status: string): string {
 }
 
 Page({
+  onShareAppMessage() {
+    return { title: APP_INFO.appName, path: '/pages/login/index' }
+  },
+
   data: {
     items: [] as Entry[], creators: [] as CreatorOption[], categories: [] as HistoryCategory[], accounts: [] as HistoryAccount[],
     dateFrom: '', dateTo: '', entryType: '' as '' | EntryType, categoryId: 0, accountId: 0,

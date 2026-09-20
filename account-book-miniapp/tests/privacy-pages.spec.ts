@@ -31,9 +31,10 @@ describe('about and privacy public pages', () => {
     expect(page.data).toMatchObject({
       appName: '随手账',
       version: '1.0.0',
-      operatorText: '待配置',
-      contactText: '待配置',
-      filingText: '备案中',
+      operatorText: 'Gitta',
+      contactText: '739817235@qq.com',
+      filingText: '已备案',
+      filingNumberText: '冀ICP备2026035005号-1X',
       filingQueryUrl: 'https://beian.miit.gov.cn',
     })
     expect(request).not.toHaveBeenCalled()

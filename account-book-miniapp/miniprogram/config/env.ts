@@ -1,7 +1,10 @@
 import { AppError } from '../types/error'
 
-const DEPLOYED_API_ADDRESSES = { trialBaseUrl: '', releaseBaseUrl: '' }
-const TIMEOUT_MS = 10_000
+const DEPLOYED_API_ADDRESSES = {
+  trialBaseUrl: 'https://www.cr-chenny.com',
+  releaseBaseUrl: 'https://www.cr-chenny.com',
+}
+const TIMEOUT_MS = 10000
 
 export interface ApiEnvironment {
   baseUrl: string

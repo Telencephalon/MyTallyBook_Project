@@ -4,6 +4,10 @@ import type { Ledger, UserProfile } from '../../types/api'
 import { roleLabel, toErrorView } from '../../utils/presentation'
 
 Page({
+  onShareAppMessage() {
+    return { title: APP_INFO.appName, path: '/pages/login/index' }
+  },
+
   _active: true,
   _generation: 0,
   _logoutOperation: 0,

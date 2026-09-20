@@ -15,7 +15,7 @@
   <view class="card query-card">
     <text class="section-title">工信部备案查询</text>
     <text class="selectable-url" user-select="true">{{filingQueryUrl}}</text>
-    <text class="muted">备案尚未完成，以上状态不代表已经备案。</text>
+    <text class="muted">备案信息可通过工信部备案查询平台核验。</text>
     <button class="button button-secondary" bindtap="copyFilingQueryUrl">复制查询地址</button>
   </view>
 </view>

@@ -1,4 +1,5 @@
 import { getRuntime } from '../../runtime'
+import { APP_INFO } from '../../config/app-info'
 import type { Ledger, UserProfile } from '../../types/api'
 import type { Entry } from '../../types/entry'
 import { AppError } from '../../types/error'
@@ -6,6 +7,10 @@ import { roleLabel, toErrorView } from '../../utils/presentation'
 import { navigateToPage } from '../../utils/navigation'
 
 Page({
+  onShareAppMessage() {
+    return { title: APP_INFO.appName, path: '/pages/login/index' }
+  },
+
   _active: true,
   _generation: 0,
   _logoutOperation: 0,

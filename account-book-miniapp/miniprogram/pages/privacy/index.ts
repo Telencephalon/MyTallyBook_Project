@@ -1,5 +1,8 @@
-Page({
-  data: {},
-})
+import { APP_INFO } from '../../config/app-info'
 
-export {}
+Page({
+  data: {
+    operator: APP_INFO.operator,
+    contact: APP_INFO.contact,
+  },
+})

@@ -28,4 +28,10 @@
     <text class="section-title">设备权限边界</text>
     <text class="paragraph">当前功能不申请与固定共享记账无关的设备能力。邀请码和备案查询地址仅在用户明确点击复制按钮后写入系统粘贴区域。</text>
   </view>
+
+  <view class="card section">
+    <text class="section-title">联系我们</text>
+    <text class="paragraph">运营方：{{operator}}</text>
+    <text class="paragraph" user-select="true">联系邮箱：{{contact}}</text>
+  </view>
 </view>

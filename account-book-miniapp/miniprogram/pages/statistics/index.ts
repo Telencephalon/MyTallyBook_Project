@@ -1,4 +1,5 @@
 import { getRuntime } from '../../runtime'
+import { APP_INFO } from '../../config/app-info'
 import type { AccountStatisticsItem, DailyStatisticsItem, MonthlySummary, RankingItem, RankingDirection, StatisticsQuery } from '../../types/statistics'
 import { shanghaiToday } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
@@ -42,6 +43,10 @@ function labelFor(scope: Scope, month: string, startDate: string, endDate: strin
 }
 
 Page({
+  onShareAppMessage() {
+    return { title: APP_INFO.appName, path: '/pages/login/index' }
+  },
+
   data: {
     month: currentMonth(),
     scopeIndex: 0,
