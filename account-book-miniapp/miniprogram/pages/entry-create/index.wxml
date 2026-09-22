@@ -1,15 +1,19 @@
-<view class="page">
-  <view class="error-panel save-error" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retryDictionaries">重新读取分类和账户</button></view>
-  <view class="card form">
-    <text>收支类型</text><picker disabled="{{loading || busy || canRetry}}" range="{{['支出','收入']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : '收入'}}</view></picker>
-    <text>金额</text><input disabled="{{loading || busy || canRetry}}" type="digit" value="{{amount}}" bindinput="onAmountInput"/>
-    <text>分类</text><picker disabled="{{loading || busy || canRetry}}" range="{{categories}}" range-key="name" bindchange="onCategoryChange"><view>{{categoryName || '请选择分类'}}</view></picker>
-    <text>账户</text><picker disabled="{{loading || busy || canRetry}}" range="{{accounts}}" range-key="name" bindchange="onAccountChange"><view>{{accountName || '请选择账户'}}</view></picker>
-    <text>日期</text><picker disabled="{{loading || busy || canRetry}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view>{{entryDate}}</view></picker>
-    <text>人名</text><input disabled="{{loading || busy || canRetry}}" maxlength="64" value="{{personName}}" placeholder="请输入人名" bindinput="onPersonNameInput"/>
-    <text>备注</text><textarea disabled="{{loading || busy || canRetry}}" maxlength="500" value="{{note}}" bindinput="onNoteInput"/>
-    <button class="button button-primary" loading="{{busy}}" disabled="{{loading || busy || canRetry}}" bindtap="onSubmit">保存账单</button>
-    <button wx:if="{{canRetry}}" disabled="{{busy}}" bindtap="onRetry">使用原提交标识重试</button>
-    <button disabled="{{busy}}" bindtap="onAbandon">返回</button>
+<view class="page refined-page entry-form-page">
+  <view class="error-panel save-error" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button class="button button-secondary" wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retryDictionaries">重新读取分类和账户</button></view>
+  <view class="card">
+    <view class="type-options" role="group" aria-label="选择收支类型">
+      <button class="type-option {{entryType === 'EXPENSE' ? 'active' : ''}}" disabled="{{loading || busy || canRetry}}" data-type="EXPENSE" bindtap="onTypeChange" hover-class="none" aria-pressed="{{entryType === 'EXPENSE'}}">支出</button>
+      <button class="type-option {{entryType === 'INCOME' ? 'active' : ''}}" disabled="{{loading || busy || canRetry}}" data-type="INCOME" bindtap="onTypeChange" hover-class="none" aria-pressed="{{entryType === 'INCOME'}}">收入</button>
+    </view>
+    <text class="amount-label">金额</text><view class="amount-field"><text class="amount-symbol">¥</text><input disabled="{{loading || busy || canRetry}}" type="digit" value="{{amount}}" placeholder="0.00" bindinput="onAmountInput" aria-label="金额"/></view>
   </view>
+  <view class="card">
+    <view class="field-row"><text class="field-label">分类</text><picker disabled="{{loading || busy || canRetry}}" range="{{categories}}" range-key="name" bindchange="onCategoryChange"><view class="field-value"><text>{{categoryName || '请选择分类'}}</text><text class="chevron"/></view></picker></view>
+    <view class="field-row"><text class="field-label">账户</text><picker disabled="{{loading || busy || canRetry}}" range="{{accounts}}" range-key="name" bindchange="onAccountChange"><view class="field-value"><text>{{accountName || '请选择账户'}}</text><text class="chevron"/></view></picker></view>
+    <view class="field-row"><text class="field-label">日期</text><picker disabled="{{loading || busy || canRetry}}" mode="date" value="{{entryDate}}" start="1000-01-01" end="9999-12-31" bindchange="onDateChange"><view class="field-value"><text>{{entryDate}}</text><text class="chevron"/></view></picker></view>
+    <view class="field-row"><text class="field-label">人名</text><input disabled="{{loading || busy || canRetry}}" maxlength="64" value="{{personName}}" placeholder="请输入人名" bindinput="onPersonNameInput" aria-label="人名"/></view>
+    <text class="field-hint" wx:if="{{lifePreset}}">人名默认填入当前创建人，可修改</text>
+  </view>
+  <view class="card"><view class="note-heading"><text>备注</text><text>选填</text></view><textarea class="note-input" disabled="{{loading || busy || canRetry}}" maxlength="500" value="{{note}}" placeholder="写下这笔账的用途" bindinput="onNoteInput" aria-label="备注"/></view>
+  <view class="form-actions"><button class="button button-primary" loading="{{busy}}" disabled="{{loading || busy || canRetry}}" bindtap="onSubmit">保存账单</button><button class="button button-secondary" wx:if="{{canRetry}}" disabled="{{busy}}" bindtap="onRetry">使用原提交标识重试</button><button class="button return-button" disabled="{{busy}}" bindtap="onAbandon">返回</button></view>
 </view>

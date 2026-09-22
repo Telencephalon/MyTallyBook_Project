@@ -1,0 +1,5 @@
+<view class="trend">
+  <view class="legend"><text>金额（元）</text><view class="legend-series"><text class="dot income-dot"></text><text>收入</text><text class="dot expense-dot"></text><text>支出</text></view></view>
+  <canvas id="trend-canvas" type="2d" class="trend-canvas" aria-label="每日收入与支出趋势，准确金额见下方每日明细"></canvas>
+  <text class="fallback" wx:if="{{drawFailed}}">趋势图暂不可用，请查看下方每日明细</text>
+</view>

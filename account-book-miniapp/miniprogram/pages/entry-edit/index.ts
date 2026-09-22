@@ -1,5 +1,5 @@
 import { getRuntime } from '../../runtime'
-import type { EntryType, ResourceStatus } from '../../types/catalog'
+import type { Category, EntryType, ResourceStatus } from '../../types/catalog'
 import type { Entry } from '../../types/entry'
 import { entryDraft, validEntryId } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
@@ -20,6 +20,8 @@ Page({
     loading: false, busy: false, canEdit: false, canReload: false, canRetryRead: false, errorMessage: '', requestId: '',
   },
   _active: true, _generation: 0, _writeOperation: 0, _dirty: false, _loadedId: 0, _loadedRevision: -1,
+  _allCategories: null as Category[] | null,
+  _categoryRevision: -1,
   onLoad(query: Record<string, string>) {
     try { this.setData({ id: validEntryId(query.id) }) }
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message }) }
@@ -48,13 +50,16 @@ Page({
       await runtime.flow.refreshContext(); if (!current()) return
       const revision = runtime.session.getRevision()
       if (!force && this._dirty && this._loadedId === this.data.id && this._loadedRevision === revision) return
+      this._allCategories = null
       const entry = await runtime.entries.detail(this.data.id); if (!current()) return
       const [categories, accounts] = await Promise.all([
-        runtime.catalog.categories(entry.entryType, 'ACTIVE'), runtime.catalog.accounts('ACTIVE'),
+        runtime.catalog.categories(undefined, 'ACTIVE'), runtime.catalog.accounts('ACTIVE'),
       ])
       if (!current()) return
+      this._allCategories = categories.items
+      this._categoryRevision = revision
       this.applyLoaded(entry,
-        categories.items.map(item => ({ id: item.id, name: item.name, status: item.status })),
+        this.categoryChoices(entry.entryType),
         accounts.items.map(item => ({ id: item.id, name: item.name, status: item.status })))
       this._dirty = false; this._loadedId = entry.id; this._loadedRevision = revision
     } catch (error) {
@@ -109,18 +114,18 @@ Page({
       this.setData({ accountId: selected?.id ?? 0, selectedAccountName: selected?.name ?? '' })
     }
   },
-  async onTypeChange(event: WechatMiniprogram.PickerChange) {
-    if (this.formLocked()) return
-    const entryType: EntryType = Number(event.detail.value) === 0 ? 'EXPENSE' : 'INCOME'
-    const runtime = getRuntime(); const generation = this._generation
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
-    this._dirty = true; this.setData({ entryType, categoryId: 0, selectedCategoryName: '' })
-    try {
-      const result = await runtime.catalog.categories(entryType, 'ACTIVE')
-      if (current() && this.data.entryType === entryType) this.setData({ categoryOptions: result.items.map(item => ({ id: item.id, name: item.name, status: item.status })) })
-    } catch (error) {
-      if (current() && this.data.entryType === entryType) { const view = toErrorView(error); this.setData({ errorMessage: view.message, requestId: view.requestId }) }
-    }
+  categoryChoices(entryType: EntryType): Choice[] {
+    return (this._allCategories || [])
+      .filter(item => item.status === 'ACTIVE' && (item.entryType === entryType || item.entryType === 'BOTH'))
+      .map(item => ({ id: item.id, name: item.name, status: item.status }))
+  },
+  onTypeChange(event: WechatMiniprogram.TouchEvent) {
+    if (this.formLocked() || !this._active || !this._allCategories) return
+    if (this._categoryRevision !== getRuntime().session.getRevision()) return
+    const entryType = event.currentTarget.dataset.type
+    if ((entryType !== 'EXPENSE' && entryType !== 'INCOME') || entryType === this.data.entryType) return
+    this._dirty = true
+    this.setData({ entryType, categoryId: 0, selectedCategoryName: '', categoryOptions: this.categoryChoices(entryType) })
   },
   async onReload() {
     if (!this.data.canReload || this.data.loading || this.data.busy) return

@@ -62,6 +62,7 @@ Page({
     dailyTotalDays: 0,
     dailyTotalPages: 0,
     dailyHasNext: false,
+    dailyDetailsExpanded: false,
     entryType: 'ALL' as RankingDirection,
     directionIndex: 2,
     directionLabels: ['支出', '收入', '全部'],
@@ -116,6 +117,10 @@ Page({
 
   async retry() {
     await this.loadAll()
+  },
+
+  toggleDailyDetails() {
+    this.setData({ dailyDetailsExpanded: !this.data.dailyDetailsExpanded })
   },
 
   async loadAll() {

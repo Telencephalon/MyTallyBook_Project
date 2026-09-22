@@ -1,0 +1,8 @@
+.trend { width: 100%; }
+.legend { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; color: #697386; font-size: 24rpx; }
+.legend-series { display: flex; align-items: center; gap: 10rpx; }
+.dot { width: 14rpx; height: 14rpx; border-radius: 50%; margin-left: 12rpx; }
+.income-dot { background: #3e7dd6; }
+.expense-dot { background: #b85654; }
+.trend-canvas { display: block; width: 100%; height: 400rpx; }
+.fallback { display: block; color: #697386; font-size: 24rpx; }

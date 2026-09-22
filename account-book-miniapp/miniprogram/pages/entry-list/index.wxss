@@ -1,10 +1,39 @@
-.filters-card{margin-bottom:20rpx}.filter-toggle{display:flex;justify-content:space-between;align-items:center;font-weight:600}.filter-toggle text:last-child{color:#3478f6;font-weight:400}.filters{display:flex;flex-direction:column;gap:16rpx;margin-top:18rpx}.actions,.pager,.row{display:flex;justify-content:space-between;align-items:center;gap:16rpx}.row{margin-top:16rpx}.row>view{display:flex;flex-direction:column}.pager{margin-top:24rpx}
-
-.entry-main{flex:1;min-width:0}
-.entry-meta{display:flex;align-items:center;min-width:0;min-height:1.4em}
-.entry-person,.entry-note{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.entry-person{flex-shrink:0;max-width:100%}
-.entry-person.with-note{max-width:50%}
-.entry-separator{flex-shrink:0;white-space:pre}
-.entry-note{flex:1;min-width:0}
-.entry-amount{flex-shrink:0;white-space:nowrap}
+@import '../../styles/refined.wxss';
+.entry-list-page { gap: 24rpx; }
+.list-banner { padding-bottom: 64rpx !important; }
+.banner-actions { display: flex; justify-content: space-between; gap: 16rpx; margin-bottom: 24rpx; }
+.banner-link { color: #fff; background: transparent; margin: 0; padding: 0; font-size: 28rpx; line-height: 48rpx; }
+.banner-link::after { border: 0; }
+.filters-card { position: relative; margin-top: -56rpx; z-index: 1; }
+.filter-toggle { display: flex; align-items: center; gap: 12rpx; font-size: 26rpx; }
+.filter-summary { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-right: 1rpx solid #e2e6ec; padding-right: 12rpx; }
+.filter-arrow { color: #657080; }
+.filters { display: flex; flex-direction: column; gap: 16rpx; margin-top: 24rpx; padding-top: 24rpx; border-top: 1rpx solid #e2e6ec; }
+.filters picker,.filters input { padding: 16rpx; background: #f7f8fa; border-radius: 12rpx; font-size: 28rpx; }
+.actions,.pager { display: flex; justify-content: space-between; align-items: center; gap: 16rpx; }
+.actions .button { flex: 1; }
+.date-heading { display: block; padding: 20rpx 24rpx 12rpx; font-size: 32rpx; font-weight: 600; }
+.date-heading:first-child { padding-top: 0; }
+.entry-list-page .row { display: flex; align-items: center; gap: 16rpx; border-radius: 0; box-shadow: none; padding: 28rpx 24rpx; border-bottom: 1rpx solid #e5e8ee; }
+.entry-list-page .row.group-first { border-radius: 24rpx 24rpx 0 0; }
+.entry-list-page .row.group-last { border-radius: 0 0 24rpx 24rpx; border-bottom: 0; margin-bottom: 8rpx; }
+.entry-list-page .row.group-first.group-last { border-radius: 24rpx; }
+.entry-direction { font-size: 36rpx; flex: none; align-self: flex-start; line-height: 1.2; }
+.entry-main { flex: 1; min-width: 0; }
+.entry-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx; }
+.entry-title { font-size: 32rpx; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.entry-badge { padding: 2rpx 12rpx; border-radius: 24rpx; font-size: 22rpx; }
+.badge-income { background: #dff3e7; color: #287b4b; }
+.badge-expense { background: #fbe4e0; color: #9a3c37; }
+.entry-meta { display: flex; align-items: center; min-width: 0; min-height: 1.4em; margin-top: 8rpx; color: #59616d; font-size: 24rpx; }
+.entry-person,.entry-note { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-person { flex-shrink: 0; max-width: 100%; }
+.entry-person.with-note { max-width: 50%; }
+.entry-separator { flex-shrink: 0; white-space: pre; }
+.entry-note { flex: 1; min-width: 0; }
+.entry-amount { flex: none; max-width: 44%; overflow-wrap: anywhere; text-align: right; font-size: 32rpx; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pager { font-size: 24rpx; color: #667085; }
+.pager button { background: none; padding: 8rpx 0; margin: 0; line-height: 48rpx; font-size: 24rpx; color: #667085; flex: none; }
+.pager button::after { border: 0; }
+.entry-list-page .create-footer { align-self: center; }
+@media(max-width:350px) { .entry-direction { display: none; } .entry-amount { font-size: 30rpx; } }

@@ -211,7 +211,7 @@ describe('entry create page', () => {
     page.onLoad(); await page.onShow()
 
     expect(page.data).toMatchObject({ categoryName: '餐饮', accountName: '现金' })
-    expect(runtime.catalog.categories).toHaveBeenCalledWith('EXPENSE', 'ACTIVE')
+    expect(runtime.catalog.categories).toHaveBeenCalledWith(undefined, 'ACTIVE')
     expect(runtime.catalog.accounts).toHaveBeenCalledWith('ACTIVE')
   })
 
@@ -380,7 +380,7 @@ describe('entry create page', () => {
     page.onLoad(); await page.onShow(); page.onAmountInput({ detail: { value: '3.40' } })
     const operation = page.onSubmit()
 
-    page.onTypeChange({ detail: { value: '1' } })
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
     page.onAmountInput({ detail: { value: '9.99' } })
     page.onNoteInput({ detail: { value: 'changed' } })
     expect(page.data).toMatchObject({ entryType: 'EXPENSE', amount: '3.40', note: '', busy: true })
@@ -418,7 +418,7 @@ describe('entry create page', () => {
     await page.onSubmit()
 
     page.onAmountInput({ detail: { value: '9.99' } })
-    page.onTypeChange({ detail: { value: '1' } })
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
     await page.onSubmit()
 
     expect(page.data).toMatchObject({ entryType: 'EXPENSE', amount: '3.40', canRetry: true })
@@ -429,6 +429,71 @@ describe('entry create page', () => {
     expect(wx.navigateBack).toHaveBeenCalledTimes(1)
   })
 })
+describe.each(['entry-create', 'entry-edit'] as const)('%s direct type selection', name => {
+  it('switches directly in both directions and preserves other form fields', async () => {
+    const runtime = runtimeFor()
+    runtime.catalog.categories.mockResolvedValue({ items: [category,
+      { ...category, id: 9, name: '工资', entryType: 'INCOME' },
+      { ...category, id: 10, name: '其他', entryType: 'BOTH' }] })
+    const page = await loadPage(name, runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    runtime.catalog.categories.mockClear()
+    runtime.catalog.accounts.mockClear()
+    runtime.flow.refreshContext.mockClear()
+    page.setData({ canEdit: true, loading: false, categoryId: 7, amount: '18.50', personName: '张三', note: '午餐' })
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data).toMatchObject({ entryType: 'INCOME', amount: '18.50', personName: '张三', note: '午餐' })
+    expect((page.data.categories ?? page.data.categoryOptions).map((item: { id: number }) => item.id)).toEqual([9, 10])
+    page.onTypeChange({ currentTarget: { dataset: { type: 'EXPENSE' } } })
+    expect(page.data.entryType).toBe('EXPENSE')
+    expect(page.data.loading).toBe(false)
+    expect((page.data.categories ?? page.data.categoryOptions).map((item: { id: number }) => item.id)).toEqual([7, 10])
+    expect(runtime.catalog.categories).not.toHaveBeenCalled()
+    expect(runtime.catalog.accounts).not.toHaveBeenCalled()
+    expect(runtime.flow.refreshContext).not.toHaveBeenCalled()
+    expect(runtime.entries.create).not.toHaveBeenCalled()
+    expect(runtime.entries.update).not.toHaveBeenCalled()
+    expect(wx.showModal).not.toHaveBeenCalled()
+  })
+
+  it('preserves the selected category on repeated taps and ignores invalid or locked changes', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    runtime.catalog.categories.mockClear()
+    page.setData({ canEdit: true, loading: false, categoryId: 7 })
+    await page.onTypeChange({ currentTarget: { dataset: { type: 'EXPENSE' } } })
+    await page.onTypeChange({ currentTarget: { dataset: { type: 'INVALID' } } })
+    page.setData({ busy: true })
+    await page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data).toMatchObject({ entryType: 'EXPENSE', categoryId: 7 })
+    expect(runtime.catalog.categories).not.toHaveBeenCalled()
+  })
+
+  it('does not reuse categories after leaving or changing identity', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onHide()
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data.entryType).toBe('EXPENSE')
+    await page.onShow()
+    runtime.setRevision(2)
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data.entryType).toBe('EXPENSE')
+  })
+
+  it('clears incompatible categories when the destination type has none', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data.categoryId).toBe(0)
+    expect(page.data.categories ?? page.data.categoryOptions).toEqual([])
+    expect(page.data.loading).toBe(false)
+  })
+})
+
 describe('entry list/detail/edit pages', () => {
   it('entry-list exposes a read retry after a failed load', async () => {
     const runtime = runtimeFor()
@@ -679,7 +744,7 @@ describe('entry list/detail/edit pages', () => {
     expect(page.data.accountOptions).toContainEqual({ id: 80, name: '旧账户（已停用）', status: 'DISABLED', original: true })
     expect(page.data.selectedCategoryName).toBe('旧分类（已停用）')
     expect(page.data.selectedAccountName).toBe('旧账户（已停用）')
-    expect(runtime.catalog.categories).toHaveBeenCalledWith('EXPENSE', 'ACTIVE')
+    expect(runtime.catalog.categories).toHaveBeenCalledWith(undefined, 'ACTIVE')
     expect(runtime.catalog.accounts).toHaveBeenCalledWith('ACTIVE')
   })
 

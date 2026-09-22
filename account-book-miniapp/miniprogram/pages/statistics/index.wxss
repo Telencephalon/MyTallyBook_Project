@@ -1,28 +1,31 @@
-.statistics-page { gap: 30rpx; }
-.filter-card { display: flex; flex-wrap: wrap; gap: 24rpx; }
+@import '../../styles/refined.wxss';
+.statistics-page { gap: 28rpx; }
+.statistics-page .statistics-banner { padding-bottom: 56rpx; }
+.statistics-page .filter-card { position: relative; display: flex; flex-wrap: wrap; gap: 18rpx; margin-top: -48rpx; margin-left: 12rpx; margin-right: 12rpx; padding: 24rpx; }
 .filter-item { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 12rpx; }
-.filter-label, .summary-label, .row-detail, .entry-count, .empty-text { color: #667085; font-size: 24rpx; }
-.picker-value { padding: 18rpx; border-radius: 14rpx; background: #f4f7fb; color: #172033; text-align: center; }
-.section { display: flex; flex-direction: column; gap: 16rpx; }
-.section-title { color: #344054; font-size: 28rpx; font-weight: 600; }
-.summary-grid { display: flex; gap: 18rpx; }
-.summary-item { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 10rpx; }
-.summary-value { color: #172033; font-size: 31rpx; font-weight: 700; word-break: break-all; }
-.income, .income .summary-value { color: #168f55; }
-.expense, .expense .summary-value { color: #d84a3a; }
-.list-card { display: flex; flex-direction: column; gap: 22rpx; }
-.daily-row, .account-row, .ranking-row { display: flex; flex-direction: column; gap: 10rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid #edf0f5; }
+.filter-label, .summary-label, .row-detail, .entry-count, .empty-text { color: #697386; font-size: 24rpx; }
+.picker-value { padding: 16rpx 8rpx; border-radius: 12rpx; background: #f3f5fa; color: #253047; text-align: center; font-size: 26rpx; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12rpx; }
+.summary-grid { display: flex; padding-bottom: 28rpx; }
+.summary-item { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 12rpx; text-align: center; }
+.summary-item + .summary-item { border-left: 1rpx solid #e2e6ec; }
+.summary-value { font-size: 40rpx; font-weight: 500; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.summary-net { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20rpx; padding-top: 24rpx; border-top: 1rpx solid #e2e6ec; font-size: 28rpx; overflow-wrap: anywhere; }
+.list-card { display: flex; flex-direction: column; gap: 24rpx; }
+.daily-row, .account-row, .ranking-row { display: flex; flex-direction: column; gap: 12rpx; padding-bottom: 22rpx; border-bottom: 1rpx solid #edf0f5; }
 .daily-row:last-child, .account-row:last-child, .ranking-row:last-child { padding-bottom: 0; border-bottom: 0; }
-.row-line { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
-.row-name { color: #172033; font-weight: 600; }
+.row-line { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12rpx; font-size: 26rpx; overflow-wrap: anywhere; }
+.row-name { color: #253047; font-weight: 500; }
 .daily-money { display: flex; flex-wrap: wrap; gap: 18rpx; color: #475467; font-size: 24rpx; }
 .range-actions { flex-basis: 100%; }
 .range-row, .daily-pager, .pager-actions { display: flex; align-items: center; gap: 14rpx; }
 .range-row picker { flex: 1; min-width: 0; }
-.range-separator { color: #667085; font-size: 24rpx; }
+.range-separator { color: #697386; font-size: 24rpx; }
 .daily-pager { justify-content: space-between; flex-wrap: wrap; }
-.bar-track { height: 14rpx; overflow: hidden; border-radius: 999rpx; background: #edf0f5; }
-.bar-fill { height: 100%; border-radius: inherit; background: #ff8a65; }
-.member-bar { background: #4b9cff; }
-.state-card { color: #667085; text-align: center; }
-.error-panel { display: flex; flex-direction: column; gap: 14rpx; padding: 24rpx; border-radius: 18rpx; background: #fff1f0; }
+.bar-track { height: 20rpx; overflow: hidden; border-radius: 6rpx; background: #f0f3f9; }
+.bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#3386df,#5276e7); }
+.ranking-row:nth-child(even) .bar-fill { background: linear-gradient(90deg,#7664d9,#6656dc); }
+.member-bar { background: linear-gradient(90deg,#36af97,#408dc8); }
+.state-card { color: #697386; text-align: center; }
+.detail-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0; padding: 14rpx 0; border: 0; background: none; font-size: 26rpx; line-height: 1.5; color: #486fd7; border-radius: 0; }
+.detail-toggle::after { border: 0; }

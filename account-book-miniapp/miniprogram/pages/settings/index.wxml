@@ -1,55 +1,26 @@
-<view class="page settings-page tab-page">
-  <view class="section" wx:if="{{ledgerName}}">
-    <text class="section-title">账本信息</text>
-    <view class="card">
-      <text class="ledger-name">{{ledgerName}}</text>
-      <view class="info-grid">
-        <view class="info-item"><text class="identity-meta">币种</text><text class="info-value">{{currency}}</text></view>
-        <view class="info-item"><text class="identity-meta">时区</text><text class="info-value">{{timezone}}</text></view>
-        <view class="info-item"><text class="identity-meta">成员上限</text><text class="info-value">{{maxMembers}} 人</text></view>
-      </view>
-    </view>
+<view class="page settings-page refined-page tab-page">
+  <view class="gradient-banner identity-card">
+    <view class="avatar-frame"><image src="/assets/icons/user-active.png" class="profile-avatar" mode="aspectFit" aria-hidden="true"/></view>
+    <view class="identity-copy"><text class="identity-name">{{nickname || '账本成员'}}</text><text class="identity-meta">{{roleLabel || '身份待加载'}}</text><text class="identity-version">版本 {{version}}</text></view>
+    <button class="profile-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openProfile" aria-label="编辑个人资料">个人资料</button>
   </view>
-  <view class="section">
-    <text class="section-title">我的身份</text>
-    <view class="card identity-card">
-      <view class="identity-copy">
-        <text class="identity-name">{{nickname || '账本成员'}}</text>
-        <text class="identity-meta">{{roleLabel || '身份待加载'}}</text>
-        <text class="identity-meta">版本 {{version}}</text>
-      </view>
-      <button class="compact-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openProfile">个人资料</button>
-    </view>
+  <view class="error-panel" wx:if="{{errorMessage}}"><text class="error-message">{{errorMessage}}</text><text class="request-id" wx:if="{{requestId}}" user-select="true">请求编号：{{requestId}}</text><button class="button button-secondary" loading="{{loading}}" disabled="{{loading || loggingOut}}" bindtap="loadContext">重新加载</button></view>
+  <view class="card ledger-card" wx:if="{{ledgerName}}">
+    <view class="ledger-heading"><image class="section-icon" src="/assets/icons/house.png" mode="aspectFit" aria-hidden="true"/><text class="section-title">固定共享账本</text></view>
+    <view class="info-item"><text class="identity-meta">当前账本</text><text class="info-value">{{ledgerName}}</text></view>
+    <view class="info-item"><text class="identity-meta">币种</text><text class="info-value">{{currency}}</text></view>
+    <view class="info-item"><text class="identity-meta">时区</text><text class="info-value">{{timezone}}</text></view>
+    <view class="info-item"><text class="identity-meta">成员上限</text><text class="info-value">{{maxMembers}} 人</text></view>
   </view>
-
-  <view class="error-panel" wx:if="{{errorMessage}}">
-    <text class="error-message">{{errorMessage}}</text>
-    <text class="request-id" wx:if="{{requestId}}" user-select="true">请求编号：{{requestId}}</text>
-    <button class="button button-secondary" loading="{{loading}}" disabled="{{loading || loggingOut}}" bindtap="loadContext">重新加载</button>
+  <view class="card action-list">
+    <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openMembers"><view class="row-label"><image src="/assets/icons/user.png" mode="aspectFit" aria-hidden="true"/><text>共享与成员</text></view><text class="chevron"/></button>
+    <button wx:if="{{canManageInvites}}" class="row-button" disabled="{{loading || loggingOut}}" bindtap="openInvites"><view class="row-label"><image src="/assets/icons/gift.png" mode="aspectFit" aria-hidden="true"/><text>邀请管理</text></view><text class="chevron"/></button>
   </view>
-
-  <view class="section">
-    <text class="section-title">共享与成员</text>
-    <view class="card action-list">
-      <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openMembers">成员与名额</button>
-      <button wx:if="{{canManageInvites}}" class="row-button" disabled="{{loading || loggingOut}}" bindtap="openInvites">邀请管理</button>
-    </view>
+  <view class="card action-list">
+    <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openCategories"><view class="row-label"><image src="/assets/icons/receipt.png" mode="aspectFit" aria-hidden="true"/><text>分类</text></view><text class="chevron"/></button>
+    <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openAccounts"><view class="row-label"><image src="/assets/icons/chart.png" mode="aspectFit" aria-hidden="true"/><text>资金账户</text></view><text class="chevron"/></button>
+    <button class="row-button" disabled="{{loggingOut}}" bindtap="openAbout"><view class="row-label"><text class="text-icon">?</text><text>关于随手账</text></view><text class="chevron"/></button>
+    <button class="row-button" disabled="{{loggingOut}}" bindtap="openPrivacy"><view class="row-label"><text class="text-icon">i</text><text>隐私说明</text></view><text class="chevron"/></button>
   </view>
-  <view class="section">
-    <text class="section-title">记账字典</text>
-    <view class="card action-list">
-      <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openCategories">分类</button>
-      <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openAccounts">资金账户</button>
-    </view>
-  </view>
-
-  <view class="section">
-    <text class="section-title">应用信息</text>
-    <view class="card action-list">
-      <button class="row-button" disabled="{{loggingOut}}" bindtap="openAbout">关于随手账</button>
-      <button class="row-button" disabled="{{loggingOut}}" bindtap="openPrivacy">隐私说明</button>
-    </view>
-  </view>
-
-  <button class="button button-danger" loading="{{loggingOut}}" disabled="{{loggingOut || loading}}" bindtap="logout">退出登录</button>
+  <button class="button button-danger logout-button" loading="{{loggingOut}}" disabled="{{loggingOut || loading}}" bindtap="logout">退出登录</button>
 </view>

@@ -1,6 +1,7 @@
 <view class="tab-bar">
   <view class="tab-items" role="tablist">
     <view wx:for="{{tabs}}" wx:key="url" class="tab-item {{selected === index ? 'selected' : ''}}" data-index="{{index}}" bindtap="switchTab" role="tab" aria-label="{{item.text}}" aria-selected="{{selected === index}}">
+      <image class="tab-icon" src="{{selected === index ? item.selectedIcon : item.icon}}" mode="aspectFit" aria-hidden="true"/>
       <text>{{item.text}}</text>
     </view>
   </view>

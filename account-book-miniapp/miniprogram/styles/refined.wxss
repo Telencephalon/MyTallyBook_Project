@@ -1,0 +1,21 @@
+/* Core-page visual language, intentionally scoped by .refined-page. */
+.refined-page { gap: 32rpx; font-size: 30rpx; }
+.refined-page .card { padding: 28rpx; border-radius: 24rpx; box-shadow: 0 12rpx 36rpx rgba(31, 35, 41, 0.06); }
+.refined-page .section { display: flex; flex-direction: column; gap: 16rpx; min-width: 0; }
+.refined-page .section-title { font-size: 34rpx; font-weight: 600; color: #1f2329; }
+.refined-page button.button { display: block; width: 100%; margin: 0; padding: 16rpx 24rpx; min-height: 80rpx; line-height: 1.5; border-radius: 16rpx; font-size: 30rpx; font-weight: 500; }
+.refined-page button.button[size="mini"] { width: auto; padding: 12rpx 20rpx; min-height: 64rpx; font-size: 24rpx; }
+.refined-page .button-secondary { border: 1rpx solid #dfe3e9; background: #fff; color: #475467; }
+.refined-page .button-danger { border: 1rpx solid #f0cfcb; color: #b94036; }
+.refined-page .error-panel { display: flex; flex-direction: column; gap: 16rpx; padding: 24rpx; border-radius: 8rpx; background: #fff1f0; color: #b94036; overflow-wrap: anywhere; }
+.refined-page .error-panel text { color: #b94036; }
+.refined-page .income { color: #27804d; }
+.refined-page .expense { color: #9a3c37; }
+.refined-page .chevron { display: inline-block; width: 12rpx; height: 12rpx; border-top: 3rpx solid #7e8793; border-right: 3rpx solid #7e8793; transform: rotate(45deg); flex: none; margin-right: 4rpx; }
+.refined-page .secondary-text { color: #667085; font-size: 24rpx; }
+.refined-page .empty-state { text-align: center; color: #667085; padding: 48rpx 24rpx; }
+.refined-page .gradient-banner { position: relative; overflow: hidden; border-radius: 24rpx; background: linear-gradient(120deg,#287de8,#6557e6); color: #fff; padding: 32rpx; box-shadow: 0 16rpx 36rpx rgba(65,99,210,.18); }
+.refined-page .gradient-banner::after { content: ''; position: absolute; width: 420rpx; height: 420rpx; right: -90rpx; top: -30rpx; border-radius: 50%; background: rgba(255,255,255,.055); pointer-events: none; }
+.refined-page .banner-title { display: block; font-size: 44rpx; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.refined-page .banner-subtitle { display: block; font-size: 24rpx; opacity: .88; margin-top: 12rpx; }
+.refined-page button.pill-primary { width: auto; min-width: 176rpx; border-radius: 48rpx; background: linear-gradient(110deg,#397cf2,#5263ee); box-shadow: 0 10rpx 24rpx rgba(64,104,233,.22); }

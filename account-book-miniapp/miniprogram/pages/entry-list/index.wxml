@@ -1,33 +1,43 @@
-<view class="page tab-page">
+<view class="page refined-page entry-list-page tab-page">
+  <view class="gradient-banner list-banner">
+    <view class="banner-actions"><button bindtap="toggleFilters" class="banner-link">筛选</button><button disabled="{{loading}}" bindtap="openCreate" class="banner-link">新增账单 ＋</button></view>
+    <text class="banner-title">账单明细</text>
+  </view>
   <view class="card filters-card">
-    <view class="filter-toggle" bindtap="toggleFilters"><text>筛选条件</text><text>{{filtersExpanded ? '收起' : '展开'}}</text></view>
+    <view class="filter-toggle" bindtap="toggleFilters" role="button" aria-label="展开或收起筛选条件"><text class="filter-summary">{{dateFrom || dateTo ? '日期已筛选' : '全部日期'}}</text><text class="filter-summary">{{categoryName || '全部分类'}}</text><text class="filter-summary">{{entryType === 'INCOME' ? '收入' : entryType === 'EXPENSE' ? '支出' : '收入 / 支出'}}</text><text class="filter-arrow">{{filtersExpanded ? '⌃' : '⌄'}}</text></view>
     <view class="filters" wx:if="{{filtersExpanded}}">
       <picker mode="date" value="{{dateFrom}}" bindchange="onDateFrom"><view>开始日期：{{dateFrom || '不限'}}</view></picker>
       <picker mode="date" value="{{dateTo}}" bindchange="onDateTo"><view>结束日期：{{dateTo || '不限'}}</view></picker>
-      <picker range="{{['全部类型','支出','收入']}}" bindchange="onType"><view>类型：{{entryType || '全部'}}</view></picker>
+      <picker range="{{['全部类型','支出','收入']}}" value="{{entryType === 'EXPENSE' ? 1 : entryType === 'INCOME' ? 2 : 0}}" bindchange="onType"><view>类型：{{entryType === 'INCOME' ? '收入' : entryType === 'EXPENSE' ? '支出' : '全部'}}</view></picker>
       <picker range="{{categories}}" range-key="displayName" bindchange="onCategory"><view>分类：{{categoryName || '全部'}}</view></picker>
       <picker range="{{accounts}}" range-key="displayName" bindchange="onAccount"><view>账户：{{accountName || '全部'}}</view></picker>
       <picker range="{{creators}}" range-key="displayName" bindchange="onCreator"><view>创建人：{{createdBy || '全部'}}</view></picker>
       <input placeholder="按备注字面搜索" value="{{keyword}}" bindinput="onKeyword"/>
-      <view class="actions"><button bindtap="onClearFilters">清除</button><button bindtap="onApplyFilters">应用</button></view>
+      <view class="actions"><button class="button button-secondary" bindtap="onClearFilters">清除筛选</button><button class="button button-primary" bindtap="onApplyFilters">应用筛选</button></view>
     </view>
   </view>
-  <button class="button button-primary" disabled="{{loading}}" bindtap="openCreate">新增账单</button>
   <view class="card" wx:if="{{loadState === 'loading'}}">正在加载账单…</view>
   <view class="error-panel" wx:elif="{{loadState === 'error'}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button size="mini" disabled="{{loading}}" loading="{{loading}}" bindtap="retry">重新加载</button></view>
   <view class="card" wx:elif="{{loadState === 'empty'}}">暂无符合条件的账单</view>
   <block wx:else>
-    <view class="card row" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+    <view class="entries">
+    <block wx:for="{{items}}" wx:key="id">
+    <text class="date-heading" wx:if="{{index === 0 || items[index - 1].entryDate !== item.entryDate}}">{{item.entryDate}}</text>
+    <view class="card row {{index === 0 || items[index - 1].entryDate !== item.entryDate ? 'group-first' : ''}} {{index === items.length - 1 || items[index + 1].entryDate !== item.entryDate ? 'group-last' : ''}}" data-id="{{item.id}}" bindtap="openDetail">
+      <text class="entry-direction {{item.entryType === 'INCOME' ? 'income' : 'expense'}}" aria-hidden="true">{{item.entryType === 'INCOME' ? '↙' : '↗'}}</text>
       <view class="entry-main">
-        <text>{{item.entryDate}} · {{item.categoryName}}{{item.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text>
+        <view class="entry-heading"><text class="entry-title">{{item.categoryName}}{{item.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text><text class="entry-badge {{item.entryType === 'INCOME' ? 'badge-income' : 'badge-expense'}}">{{item.entryType === 'INCOME' ? '收入' : '支出'}}</text></view>
         <view class="entry-meta">
           <text wx:if="{{item.personName}}" class="entry-person {{item.note ? 'with-note' : ''}}">{{item.personName}}</text>
           <text wx:if="{{item.personName && item.note}}" class="entry-separator"> · </text>
           <text wx:if="{{item.note}}" class="entry-note">{{item.note}}</text>
         </view>
       </view>
-      <text class="entry-amount">{{item.entryType === 'INCOME' ? '+' : '-'}}{{item.amount}}</text>
+      <text class="entry-amount {{item.entryType === 'INCOME' ? 'income' : 'expense'}}">{{item.entryType === 'INCOME' ? '+' : '-'}} {{item.amount}}</text>
+    </view>
+    </block>
     </view>
     <view class="pager"><button disabled="{{page <= 1 || loading}}" bindtap="previousPage">上一页</button><text>{{page}} / 共 {{total}} 条</text><button disabled="{{page * pageSize >= total || loading}}" bindtap="nextPage">下一页</button></view>
   </block>
+  <button class="button button-primary pill-primary create-footer" disabled="{{loading}}" bindtap="openCreate">记一笔</button>
 </view>

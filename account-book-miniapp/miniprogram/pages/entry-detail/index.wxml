@@ -1,12 +1,14 @@
-<view class="page">
-  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button wx:if="{{canRetry}}" size="mini" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="onRetry">重新加载</button></view>
+<view class="page refined-page detail-page">
+  <view class="error-panel" wx:if="{{errorMessage}}"><text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button class="button button-secondary" wx:if="{{canRetry}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="onRetry">重新加载</button></view>
   <view class="card detail" wx:if="{{entry}}">
-    <text>{{entry.entryType === 'INCOME' ? '收入' : '支出'}} {{entry.amount}}</text>
-    <text>日期：{{entry.entryDate}}</text><text>分类：{{entry.categoryName}}{{entry.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text>
-    <text>账户：{{entry.accountName}}{{entry.accountStatus === 'DISABLED' ? '（已停用）' : ''}}</text>
-    <text wx:if="{{entry.personName}}">人名：{{entry.personName}}</text>
-    <text>创建人：{{entry.creatorName}}</text><text>备注：{{entry.note || '无'}}</text>
-    <button wx:if="{{canEdit}}" disabled="{{busy}}" bindtap="openEdit">编辑</button>
-    <button wx:if="{{canDelete}}" class="button button-danger" loading="{{busy}}" disabled="{{busy}}" bindtap="onDelete">删除</button>
+    <view class="detail-heading"><text class="secondary-text">{{entry.entryType === 'INCOME' ? '收入' : '支出'}}</text><text class="detail-amount {{entry.entryType === 'INCOME' ? 'income' : 'expense'}}">{{entry.entryType === 'INCOME' ? '+' : '-'}} {{entry.amount}}</text></view>
+    <view class="detail-row"><text>日期</text><text>{{entry.entryDate}}</text></view>
+    <view class="detail-row"><text>分类</text><text>{{entry.categoryName}}{{entry.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text></view>
+    <view class="detail-row"><text>账户</text><text>{{entry.accountName}}{{entry.accountStatus === 'DISABLED' ? '（已停用）' : ''}}</text></view>
+    <view class="detail-row" wx:if="{{entry.personName}}"><text>人名</text><text>{{entry.personName}}</text></view>
+    <view class="detail-row"><text>创建人</text><text>{{entry.creatorName}}</text></view>
+    <view class="detail-note"><text class="secondary-text">备注</text><text>{{entry.note || '无'}}</text></view>
   </view>
+  <button wx:if="{{entry && canEdit}}" class="button button-primary" disabled="{{busy}}" bindtap="openEdit">编辑账单</button>
+  <button wx:if="{{entry && canDelete}}" class="button button-danger" loading="{{busy}}" disabled="{{busy}}" bindtap="onDelete">删除账单</button>
 </view>

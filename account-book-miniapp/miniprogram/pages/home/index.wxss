@@ -1,66 +1,37 @@
-.home-page {
-  gap: 34rpx;
-}
-
-.hero-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
-  padding: 44rpx 38rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #1677ff, #4b9cff);
-  color: #ffffff;
-  box-shadow: 0 18rpx 46rpx rgba(22, 119, 255, 0.2);
-}
-
-.hero-kicker {
-  font-size: 24rpx;
-  opacity: 0.82;
-}
-
-.hero-title {
-  font-size: 46rpx;
-  font-weight: 700;
-}
-
-.hero-subtitle {
-  font-size: 28rpx;
-  opacity: 0.92;
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-.section-title {
-  color: #344054;
-  font-size: 28rpx;
-  font-weight: 600;
-}
-
-.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
-.text-button { width: auto; margin: 0; padding: 0; border: 0; background: transparent; color: #1677ff; font-size: 25rpx; line-height: 48rpx; }
-.text-button::after { border: 0; }
-.recent-meta, .loading-card { color: #667085; font-size: 24rpx; }
-.income { color: #168f55; }
-.expense { color: #d84a3a; }
-.recent-list { display: flex; flex-direction: column; gap: 20rpx; }
-.recent-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid #edf0f5; }
-.recent-row:last-child { padding-bottom: 0; border-bottom: 0; }
-.recent-main { display: flex; min-width: 0; flex-direction: column; gap: 8rpx; }
-.recent-name { color: #172033; font-weight: 600; }
-.recent-amount { flex: none; font-weight: 700; }
-.loading-card { text-align: center; }
-
-.catalog-actions { display: flex; flex-direction: column; gap: 16rpx; }
-
-.error-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 24rpx;
-  border-radius: 18rpx;
-  background: #fff1f0;
-}
+@import '../../styles/refined.wxss';
+.home-page { gap: 32rpx; }
+.home-page .hero-card { display: flex; flex-direction: column; gap: 12rpx; padding: 32rpx; border-radius: 24rpx; }
+.hero-top { display: flex; justify-content: space-between; gap: 16rpx; font-size: 26rpx; opacity: .9; }
+.hero-title { font-size: 48rpx; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.hero-subtitle { font-size: 28rpx; opacity: .92; overflow-wrap: anywhere; }
+.shortcut-grid { display: flex; gap: 24rpx; }
+.shortcut-card { display: flex; flex: 1; align-items: center; min-width: 0; gap: 16rpx; min-height: 152rpx; margin: 0; padding: 24rpx; line-height: 1.5; background: #fff; border-radius: 24rpx; box-shadow: 0 12rpx 32rpx rgba(31,35,41,.08); text-align: left; }
+.shortcut-card::after, .text-button::after, .catalog-button::after, .home-logout::after { border: 0; }
+.shortcut-icon { width: 44rpx; height: 44rpx; flex: none; }
+.shortcut-copy { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; }
+.shortcut-title { font-size: 32rpx; font-weight: 600; white-space: nowrap; }
+.shortcut-subtitle { font-size: 24rpx; color: #555e6a; white-space: nowrap; }
+.shortcut-hover { background: #f1f5fc; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.text-button { display: flex; width: auto; align-items: center; justify-content: center; flex: none; gap: 8rpx; margin: 0; padding: 0; border: 0; background: transparent; color: #555e6a; font-size: 24rpx; line-height: 48rpx; }
+.recent-list { display: flex; flex-direction: column; }
+.recent-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 24rpx 0; border-bottom: 1rpx solid #e2e6ec; }
+.recent-row:first-child { padding-top: 8rpx; }
+.recent-row:last-child { border-bottom: 0; padding-bottom: 8rpx; }
+.recent-main { flex: 1; min-width: 0; }
+.recent-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx; }
+.recent-name { font-size: 28rpx; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
+.direction-tag { flex: none; border-radius: 24rpx; padding: 2rpx 14rpx; font-size: 22rpx; line-height: 1.5; }
+.tag-income { background: #dff3e7; color: #287b4b; }
+.tag-expense { background: #fbe4e0; color: #9a3c37; }
+.recent-meta { display: block; font-size: 24rpx; color: #59616d; margin-top: 8rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-amount { font-size: 32rpx; font-weight: 500; flex: none; max-width: 48%; overflow-wrap: anywhere; text-align: right; font-variant-numeric: tabular-nums; }
+.loading-card { text-align: center; color: #667085; }
+.bookkeeping-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16rpx; }
+.home-page .bookkeeping-row .pill-primary { font-size: 32rpx; padding: 14rpx 32rpx; }
+.statistics-link { color: #1f2329; font-size: 28rpx; }
+.catalog-actions { display: flex; flex-direction: column; }
+.catalog-button { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0; padding: 20rpx 0; font-size: 30rpx; line-height: 1.5; border-radius: 0; background: transparent; border-bottom: 1rpx solid #e2e6ec; text-align: left; }
+.catalog-button:last-child { border-bottom: 0; }
+.home-logout { margin: 0 auto; padding: 8rpx 24rpx; background: none; color: #8c4b47; font-size: 24rpx; line-height: 40rpx; }
+@media (max-width: 350px) { .shortcut-grid { gap: 16rpx; } .shortcut-card { padding: 24rpx 16rpx; gap: 12rpx; } .shortcut-title { font-size: 30rpx; } .recent-amount { font-size: 30rpx; } }

@@ -1,1 +1,7 @@
-.detail{display:flex;flex-direction:column;gap:18rpx}
+@import '../../styles/refined.wxss';
+.detail-heading { display: flex; flex-direction: column; align-items: center; gap: 12rpx; padding: 16rpx 0 32rpx; border-bottom: 1rpx solid #e5e8ee; }
+.detail-amount { font-size: 52rpx; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
+.detail-row { display: flex; justify-content: space-between; align-items: baseline; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid #e5e8ee; }
+.detail-row text:first-child { color: #667085; font-size: 28rpx; flex: none; }
+.detail-row text:last-child { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.detail-note { display: flex; flex-direction: column; gap: 16rpx; padding-top: 24rpx; overflow-wrap: anywhere; white-space: pre-wrap; }

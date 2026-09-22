@@ -21,8 +21,8 @@ textarea {
 }
 
 .page.tab-page {
-  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
-  padding-bottom: calc(max(100rpx, 48px) + 32rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(152rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(max(120rpx, 60px) + 32rpx + env(safe-area-inset-bottom));
 }
 
 textarea {

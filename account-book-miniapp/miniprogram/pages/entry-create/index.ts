@@ -15,6 +15,8 @@ Page({
   },
   _active: true, _generation: 0, _dictionaryGeneration: 0, _loadedRevision: -1,
   _personNameInitialized: false,
+  _allCategories: null as Category[] | null,
+  _categoryRevision: -1,
   _intent: null as EntryCreateIntent | null,
 
   onLoad(query: Record<string, string | undefined> = {}) {
@@ -72,6 +74,7 @@ Page({
   },
 
   async loadDictionaries() {
+    this._allCategories = null
     const generation = this._generation
     const dictionaryGeneration = ++this._dictionaryGeneration
     let runtime: ReturnType<typeof getRuntime>
@@ -96,23 +99,17 @@ Page({
         }
       }
       const [categories, accounts] = await Promise.all([
-        runtime.catalog.categories(this.data.entryType, 'ACTIVE'),
+        runtime.catalog.categories(undefined, 'ACTIVE'),
         runtime.catalog.accounts('ACTIVE'),
       ])
       if (current()) {
-        const defaultCategory = this.data.favorPreset
-          ? categories.items.find(item => item.name === '人情')
-          : this.data.lifePreset
-            ? categories.items.find(item => item.name === '生活') || categories.items.find(item => item.name === '居住')
-            : categories.items[0]
-        const categoryId = this.data.categoryId || defaultCategory?.id || 0
+        this._allCategories = categories.items
+        this._categoryRevision = runtime.session.getRevision()
         const defaultAccount = this.data.favorPreset ? accounts.items.find(item => item.name === '微信') : accounts.items[0]
         const accountId = this.data.accountId || defaultAccount?.id || 0
         this.setData({
-        categories: categories.items,
+        ...this.categorySelection(this.data.entryType, this.data.categoryId),
         accounts: accounts.items,
-        categoryId,
-        categoryName: categories.items.find(item => item.id === categoryId)?.name || '',
         accountId,
         accountName: accounts.items.find(item => item.id === accountId)?.name || '',
         })
@@ -158,10 +155,22 @@ Page({
       this.setData({ accountId: selected?.id ?? 0, accountName: selected?.name ?? '' })
     }
   },
-  onTypeChange(event: WechatMiniprogram.PickerChange) {
-    if (this.formLocked()) return
-    this.setData({ entryType: Number(event.detail.value) === 0 ? 'EXPENSE' : 'INCOME', categoryId: 0, categoryName: '' })
-    void this.loadDictionaries()
+  categorySelection(entryType: EntryType, preferredId = 0) {
+    const categories = (this._allCategories || []).filter(item => item.status === 'ACTIVE' && (item.entryType === entryType || item.entryType === 'BOTH'))
+    const defaultCategory = this.data.favorPreset
+      ? categories.find(item => item.name === '人情')
+      : this.data.lifePreset
+        ? categories.find(item => item.name === '生活') || categories.find(item => item.name === '居住')
+        : categories[0]
+    const selected = categories.find(item => item.id === preferredId) || defaultCategory
+    return { categories, categoryId: selected?.id || 0, categoryName: selected?.name || '' }
+  },
+  onTypeChange(event: WechatMiniprogram.TouchEvent) {
+    if (this.formLocked() || !this._active || !this._allCategories) return
+    if (this._categoryRevision !== getRuntime().session.getRevision()) return
+    const entryType = event.currentTarget.dataset.type
+    if ((entryType !== 'EXPENSE' && entryType !== 'INCOME') || entryType === this.data.entryType) return
+    this.setData({ entryType, ...this.categorySelection(entryType) })
   },
 
   async onSubmit() {

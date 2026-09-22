@@ -3,7 +3,11 @@ import { TAB_ROUTES } from '../utils/navigation'
 Component({
   data: {
     selected: -1,
-    tabs: TAB_ROUTES.map((url, index) => ({ url, text: ['首页', '明细', '统计', '我的'][index] })),
+    tabs: TAB_ROUTES.map((url, index) => {
+      const icon = ['home', 'receipt', 'chart', 'user'][index]
+      return { url, text: ['首页', '明细', '统计', '我的'][index],
+        icon: `/assets/icons/${icon}.png`, selectedIcon: `/assets/icons/${icon}-active.png` }
+    }),
   },
   lifetimes: {
     attached() { this.syncSelected() },

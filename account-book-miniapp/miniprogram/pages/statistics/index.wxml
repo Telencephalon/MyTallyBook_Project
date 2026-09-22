@@ -1,4 +1,5 @@
-<view class="page statistics-page tab-page">
+<view class="page refined-page statistics-page tab-page">
+  <view class="gradient-banner statistics-banner"><text class="banner-title">收支统计</text><text class="banner-subtitle">{{appliedRangeLabel}} · 看清每一笔收支</text></view>
   <view class="filter-card card">
     <view class="filter-item">
       <text class="filter-label">统计范围</text>
@@ -13,7 +14,7 @@
       </picker>
     </view>
     <view class="filter-item">
-      <text class="filter-label">收支类型</text>
+      <text class="filter-label">排行收支类型</text>
       <picker range="{{directionLabels}}" value="{{directionIndex}}" bindchange="onDirectionChange">
         <view class="picker-value">{{directionLabels[directionIndex]}}</view>
       </picker>
@@ -43,18 +44,31 @@
 
   <block wx:if="{{summary}}">
     <view class="section">
-      <text class="section-title">统计汇总 · {{appliedRangeLabel}}</text>
-      <view class="summary-grid card">
-        <view class="summary-item income"><text class="summary-label">收入</text><text class="summary-value">¥{{summary.income}}</text></view>
-        <view class="summary-item expense"><text class="summary-label">支出</text><text class="summary-value">¥{{summary.expense}}</text></view>
-        <view class="summary-item"><text class="summary-label">结余</text><text class="summary-value">¥{{summary.net}}</text></view>
+      <text class="section-title">{{appliedScope === 'MONTH' ? '月度概览' : '收支概览'}}</text>
+      <view class="summary-card card">
+        <view class="summary-grid">
+          <view class="summary-item income"><text class="summary-label">总收入</text><text class="summary-value">+{{summary.income}}</text></view>
+          <view class="summary-item expense"><text class="summary-label">总支出</text><text class="summary-value">-{{summary.expense}}</text></view>
+        </view>
+        <view class="summary-net"><text>结余 ¥{{summary.net}}</text><text class="entry-count">共 {{summary.entryCount}} 笔</text></view>
       </view>
-      <text class="entry-count">共 {{summary.entryCount}} 笔</text>
+    </view>
+
+    <view class="section">
+      <view class="section-heading"><text class="section-title">分类占比</text><text class="row-detail">{{directionLabels[directionIndex]}} · ¥{{categoryTotal}}</text></view>
+      <view class="card list-card">
+        <view class="ranking-row" wx:for="{{categoryItems}}" wx:key="id">
+          <view class="row-line"><text class="row-name">{{item.name}}</text><text>¥{{item.amount}} · {{item.percentage}}%</text></view>
+          <view class="bar-track"><view class="bar-fill" style="width: {{item.width}}%;"></view></view>
+        </view>
+        <text class="empty-text" wx:if="{{!categoryItems.length}}">暂无排行数据</text>
+      </view>
     </view>
 
     <view class="section">
       <text class="section-title">每日趋势</text>
       <view class="card list-card">
+        <daily-trend wx:if="{{daily.length}}" items="{{daily}}" />
         <view class="daily-pager">
           <text class="row-detail">第 {{dailyPage}} / {{dailyTotalPages}} 页 · 共 {{dailyTotalDays}} 天</text>
           <view class="pager-actions">
@@ -62,22 +76,12 @@
             <button class="button button-secondary" size="mini" disabled="{{loading || !dailyHasNext}}" bindtap="onDailyNext">下一页</button>
           </view>
         </view>
-        <view class="daily-row" wx:for="{{daily}}" wx:key="date">
+        <button class="detail-toggle" wx:if="{{daily.length}}" bindtap="toggleDailyDetails">{{dailyDetailsExpanded ? '收起每日明细' : '查看每日明细'}} <text>{{dailyDetailsExpanded ? '−' : '+'}}</text></button>
+        <view class="daily-row" wx:for="{{daily}}" wx:key="date" wx:if="{{dailyDetailsExpanded}}">
           <text class="row-name">{{item.date}}</text>
           <view class="daily-money"><text class="income">+{{item.income}}</text><text class="expense">-{{item.expense}}</text><text>净 {{item.net}}</text></view>
         </view>
         <text class="empty-text" wx:if="{{!daily.length}}">所选范围暂无账单</text>
-      </view>
-    </view>
-
-    <view class="section">
-      <text class="section-title">分类排行 · 合计 ¥{{categoryTotal}}</text>
-      <view class="card list-card">
-        <view class="ranking-row" wx:for="{{categoryItems}}" wx:key="id">
-          <view class="row-line"><text class="row-name">{{item.name}}</text><text>¥{{item.amount}} · {{item.percentage}}%</text></view>
-          <view class="bar-track"><view class="bar-fill" style="width: {{item.width}}%;"></view></view>
-        </view>
-        <text class="empty-text" wx:if="{{!categoryItems.length}}">暂无排行数据</text>
       </view>
     </view>
 
