@@ -31,6 +31,20 @@ public class JdbcAccountStore implements AccountStore {
             GROUP BY fa.id, fa.name, fa.account_type, fa.initial_balance,
                      fa.sort_no, fa.status, fa.version
             """;
+    // Keep the predicate in the LEFT JOIN so unused shared accounts still appear with zero personal balance.
+    private static final String PERSONAL_SELECT = """
+            SELECT fa.id, fa.name, fa.account_type, 0 AS initial_balance, fa.sort_no, fa.status, fa.version,
+                   COALESCE(SUM(
+                       CASE WHEN e.entry_type = 'INCOME' THEN e.amount ELSE -e.amount END
+                   ), 0) AS current_balance
+            FROM fund_account fa
+            LEFT JOIN book_entry e
+              ON e.account_id = fa.id
+             AND e.ledger_id = fa.ledger_id
+             AND e.deleted_at IS NULL
+             AND e.created_by = ?
+            WHERE fa.ledger_id = 1
+            """;
 
     private final Supplier<JdbcTemplate> jdbcTemplateSupplier;
 
@@ -57,6 +71,20 @@ public class JdbcAccountStore implements AccountStore {
     @Override
     public Optional<AccountRow> find(long id) {
         return jdbc().query(SELECT + " AND fa.id = ? " + GROUP_BY, mapper(), id).stream().findFirst();
+    }
+
+    @Override
+    public List<AccountRow> list(String status, long createdBy) {
+        String sql = PERSONAL_SELECT + (status == null ? "" : " AND fa.status = ?")
+                + " " + GROUP_BY + " ORDER BY fa.sort_no, fa.id";
+        return status == null ? jdbc().query(sql, mapper(), createdBy)
+                : jdbc().query(sql, mapper(), createdBy, status);
+    }
+
+    @Override
+    public Optional<AccountRow> find(long id, long createdBy) {
+        return jdbc().query(PERSONAL_SELECT + " AND fa.id = ? " + GROUP_BY, mapper(), createdBy, id)
+                .stream().findFirst();
     }
 
     @Override

@@ -90,6 +90,29 @@ class JdbcEntryStoreTests {
     }
 
     @Test
+    void listAndCountBindTheSameCreatorWithoutUsingPersonNameAsScope() {
+        var jdbc = mock(JdbcTemplate.class);
+        var store = new JdbcEntryStore(jdbc);
+        var filters = EntryFilters.parse("2026-09-01", "2026-09-30", null, null, null, "99", null, "2", "10");
+
+        store.list(filters);
+        store.count(filters);
+
+        var listSql = ArgumentCaptor.forClass(String.class);
+        var listArgs = ArgumentCaptor.forClass(Object[].class);
+        var countSql = ArgumentCaptor.forClass(String.class);
+        var countArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).query(listSql.capture(), any(RowMapper.class), listArgs.capture());
+        verify(jdbc).queryForObject(countSql.capture(), eq(Long.class), countArgs.capture());
+        assertThat(normalize(listSql.getValue())).contains("e.created_by=?").doesNotContain("e.person_name=?");
+        assertThat(normalize(countSql.getValue())).contains("e.created_by=?").doesNotContain("e.person_name=?");
+        assertThat(listArgs.getValue()).containsExactly(java.sql.Date.valueOf("2026-09-01"),
+                java.sql.Date.valueOf("2026-10-01"), 99L, 10, 10L);
+        assertThat(countArgs.getValue()).containsExactly(java.sql.Date.valueOf("2026-09-01"),
+                java.sql.Date.valueOf("2026-10-01"), 99L);
+    }
+
+    @Test
     void updateDeleteAndReplayQueriesEnforceLedgerSoftDeleteAndVersion() {
         var jdbc = mock(JdbcTemplate.class);
         var store = new JdbcEntryStore(jdbc);
@@ -128,10 +151,24 @@ class JdbcEntryStoreTests {
         new JdbcEntryStore(jdbc).creators();
 
         var sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbc).query(sql.capture(), any(RowMapper.class));
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), any(Object[].class));
         assertThat(normalize(sql.getValue()))
                 .contains("UNION", "lm.status='ACTIVE'", "u.status='ACTIVE'", "book_entry", "created_by", "display_name", "nickname")
                 .doesNotContain("openid", "unionid", "auth_session");
+    }
+
+    @Test
+    void personalCreatorsQueryBindsUserIdAfterTheCurrentAndHistoricalUnion() {
+        var jdbc = mock(JdbcTemplate.class);
+        new JdbcEntryStore(jdbc).creators(99L);
+
+        var sql = ArgumentCaptor.forClass(String.class);
+        var args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
+        assertThat(normalize(sql.getValue()))
+                .contains(") creator_options WHERE user_id=? GROUP BY user_id", "UNION")
+                .doesNotContain("user_id=99");
+        assertThat(args.getValue()).containsExactly(99L);
     }
 
     private static String normalize(String sql) {

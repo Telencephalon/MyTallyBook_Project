@@ -3,10 +3,13 @@ package com.mytallybook.accountbook.statistics;
 import com.mytallybook.accountbook.common.error.BusinessException;
 import com.mytallybook.accountbook.common.error.ErrorCode;
 import com.mytallybook.accountbook.ledger.LedgerReadGuard;
+import com.mytallybook.accountbook.member.store.MemberStore;
 import com.mytallybook.accountbook.security.CurrentUser;
 import com.mytallybook.accountbook.security.MemberRole;
 import com.mytallybook.accountbook.statistics.store.StatisticsStore;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -188,8 +191,92 @@ class StatisticsServiceTests {
         verifyNoInteractions(h.store);
     }
 
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "ADMIN"})
+    void legacyOverloadsApplyLivePersonalScopeToEveryAggregation(MemberRole role) {
+        var h = harness();
+        when(h.guard.requireActor(ACTOR)).thenReturn(new MemberStore.MemberState(11, 1, "ACTIVE", role,
+                "ACTIVE", "昵称", null, Instant.EPOCH));
+        when(h.store.summary(any())).thenReturn(new StatisticsStore.SummaryRow(BigDecimal.ZERO, BigDecimal.TEN, 1));
+
+        h.service.summary(ACTOR, "2024-09");
+        h.service.daily(ACTOR, "2024-09");
+        h.service.categories(ACTOR, "2024-09", "EXPENSE");
+        h.service.accounts(ACTOR, "2024-09");
+        h.service.members(ACTOR, "2024-09", "EXPENSE");
+
+        verifyScopedAggregations(h.store, 1L);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "ADMIN"})
+    void allHistoryMetadataAndDailyZeroFillOnlyRevealPersonalDates(MemberRole role) {
+        var h = harness();
+        when(h.guard.requireActor(ACTOR)).thenReturn(new MemberStore.MemberState(11, 1, "ACTIVE", role,
+                "ACTIVE", "昵称", null, Instant.EPOCH));
+        when(h.store.summary(any())).thenReturn(new StatisticsStore.SummaryRow(BigDecimal.ZERO, BigDecimal.TEN, 1));
+        when(h.store.extent(any())).thenAnswer(call -> Long.valueOf(1).equals(((StatisticsPeriod) call.getArgument(0)).createdBy())
+                ? new StatisticsStore.DateExtent(LocalDate.of(2024, 9, 2), LocalDate.of(2024, 9, 4))
+                : new StatisticsStore.DateExtent(LocalDate.of(2020, 1, 1), LocalDate.of(2026, 12, 31)));
+        when(h.store.daily(any(), any(), any())).thenReturn(List.of(new StatisticsStore.DailyRow(
+                LocalDate.of(2024, 9, 4), BigDecimal.ZERO, BigDecimal.TEN, 1)));
+
+        var summary = h.service.summary(ACTOR, null, "all", null, null);
+        var daily = h.service.daily(ACTOR, null, "all", null, null, null);
+        var categories = h.service.categories(ACTOR, null, "all", null, null, "EXPENSE");
+        var accounts = h.service.accounts(ACTOR, null, "all", null, null);
+        var members = h.service.members(ACTOR, null, "all", null, null, "EXPENSE");
+
+        assertEquals("2024-09-02", summary.startDate());
+        assertEquals("2024-09-04", summary.endDate());
+        assertEquals("2024-09-02", categories.startDate());
+        assertEquals("2024-09-02", accounts.startDate());
+        assertEquals("2024-09-02", members.startDate());
+        assertEquals(3, daily.totalDays());
+        assertEquals(1, daily.totalPages());
+        assertEquals(List.of("2024-09-02", "2024-09-03", "2024-09-04"),
+                daily.items().stream().map(StatisticsModels.DailyItem::date).toList());
+        assertEquals(List.of("0.00", "0.00", "10.00"),
+                daily.items().stream().map(StatisticsModels.DailyItem::expense).toList());
+        verifyScopedAggregations(h.store, 1L);
+        verify(h.store, times(5)).extent(argThat(period -> Long.valueOf(1).equals(period.createdBy())));
+    }
+
+    @Test
+    void liveOwnerCanScopeEveryAggregationToAllOrAFormerCreator() {
+        var h = harness();
+        var staleMemberToken = new CurrentUser(1, 1, 11, MemberRole.MEMBER);
+        when(h.guard.requireActor(staleMemberToken)).thenReturn(new MemberStore.MemberState(11, 1, "ACTIVE", MemberRole.OWNER,
+                "ACTIVE", "昵称", null, Instant.EPOCH));
+        when(h.store.summary(any())).thenReturn(new StatisticsStore.SummaryRow(BigDecimal.ZERO, BigDecimal.TEN, 1));
+        when(h.store.extent(any())).thenReturn(new StatisticsStore.DateExtent(LocalDate.of(2024, 9, 2), LocalDate.of(2024, 9, 4)));
+
+        for (String requested : new String[]{null, "99"}) {
+            clearInvocations(h.store);
+            h.service.summary(staleMemberToken, null, "all", null, null, requested);
+            h.service.daily(staleMemberToken, null, "all", null, null, "1", requested);
+            h.service.categories(staleMemberToken, null, "all", null, null, "ALL", requested);
+            h.service.accounts(staleMemberToken, null, "all", null, null, requested);
+            h.service.members(staleMemberToken, null, "all", null, null, "ALL", requested);
+
+            Long expected = requested == null ? null : 99L;
+            verifyScopedAggregations(h.store, expected);
+            verify(h.store, times(5)).extent(argThat(period -> java.util.Objects.equals(expected, period.createdBy())));
+        }
+    }
+
+    private static void verifyScopedAggregations(StatisticsStore store, Long creator) {
+        verify(store).summary(argThat(period -> java.util.Objects.equals(creator, period.createdBy())));
+        verify(store).daily(argThat(period -> java.util.Objects.equals(creator, period.createdBy())), any(), any());
+        verify(store).categories(argThat(period -> java.util.Objects.equals(creator, period.createdBy())), any());
+        verify(store).accounts(argThat(period -> java.util.Objects.equals(creator, period.createdBy())));
+        verify(store).members(argThat(period -> java.util.Objects.equals(creator, period.createdBy())), any());
+    }
+
     private static Harness harness() {
         var guard = mock(LedgerReadGuard.class);
+        when(guard.requireActor(ACTOR)).thenReturn(new MemberStore.MemberState(11, 1, "ACTIVE", MemberRole.OWNER,
+                "ACTIVE", "昵称", null, Instant.EPOCH));
         var store = mock(StatisticsStore.class);
         return new Harness(guard, store, new StatisticsService(guard, store, CLOCK));
     }

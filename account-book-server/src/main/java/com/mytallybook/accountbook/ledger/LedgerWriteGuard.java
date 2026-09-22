@@ -36,12 +36,8 @@ public class LedgerWriteGuard {
         if (!config.initialized()) {
             throw new BusinessException(ErrorCode.SYSTEM_NOT_INITIALIZED);
         }
-        if (config.maxUsers() < 1 || config.maxUsers() > 10) {
-            throw conflict();
-        }
         var ledger = memberStore.lockLedger().orElseThrow(LedgerWriteGuard::conflict);
-        if (ledger.id() != 1 || !"ACTIVE".equals(ledger.status())
-                || ledger.maxMembers() < 1 || ledger.maxMembers() > 10) {
+        if (ledger.id() != 1 || !"ACTIVE".equals(ledger.status())) {
             throw conflict();
         }
         var members = memberStore.lockMembers();
@@ -68,10 +64,6 @@ public class LedgerWriteGuard {
     public record LockedLedger(AuthStore.AppConfigState config, LedgerState ledger, List<MemberState> members) {
         public LockedLedger {
             members = List.copyOf(members);
-        }
-
-        public int maxMembers() {
-            return Math.min(10, Math.min(config.maxUsers(), ledger.maxMembers()));
         }
 
         public MemberState requireActor(CurrentUser currentUser) {

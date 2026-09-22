@@ -17,6 +17,7 @@ public interface MemberStore {
     int remove(long memberId, MemberRole expectedRole, String status, Instant removedAt);
     int transferOwner(long expectedOwnerUserId, long ownerUserId, long expectedVersion);
 
+    // maxMembers is legacy schema metadata; it does not constrain invited membership.
     record LedgerState(long id, long ownerUserId, int maxMembers, String status, long version) {}
     record MemberState(long memberId, long userId, String userStatus, MemberRole role,
                        String status, String nickname, String displayName, Instant joinedAt) {}

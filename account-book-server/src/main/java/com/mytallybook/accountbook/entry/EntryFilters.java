@@ -14,6 +14,11 @@ public record EntryFilters(LocalDate dateFrom, LocalDate dateTo, LocalDate dateT
     private static final LocalDate MAX_DATE = LocalDate.of(9999, 12, 31);
     private static final Set<String> TYPES = Set.of("INCOME", "EXPENSE");
 
+    public EntryFilters withCreator(Long creator) {
+        return new EntryFilters(dateFrom, dateTo, dateToExclusive, entryType, categoryId, accountId,
+                creator, keyword, page, pageSize, offset);
+    }
+
     public static EntryFilters parse(String dateFrom, String dateTo, String entryType,
                                      String categoryId, String accountId, String createdBy,
                                      String keyword, String page, String pageSize) {

@@ -56,14 +56,29 @@ class AccountHttpTests {
 
     @Test
     void exactMoneySerializesAsStringsAndFiltersValidate() throws Exception {
-        when(store.list("ACTIVE")).thenReturn(List.of(new AccountStore.AccountRow(
-                7, "现金", "CASH", new BigDecimal("-1.20"), new BigDecimal("0.30"), 0, "ACTIVE", 2)));
+        when(store.list("ACTIVE", 2L)).thenReturn(List.of(new AccountStore.AccountRow(
+                7, "现金", "CASH", BigDecimal.ZERO, new BigDecimal("0.30"), 0, "ACTIVE", 2)));
         mvc.perform(get("/api/v1/accounts?status=ACTIVE").header("Authorization", "Bearer member"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items[0].initialBalance").value("-1.20"))
+                .andExpect(jsonPath("$.data.items[0].initialBalance").value("0.00"))
                 .andExpect(jsonPath("$.data.items[0].currentBalance").value("0.30"));
         mvc.perform(get("/api/v1/accounts?status=BAD").header("Authorization", "Bearer member"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminCannotMutateSharedAccountDictionary() throws Exception {
+        mvc.perform(post("/api/v1/accounts").header("Authorization", "Bearer admin")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"现金\",\"accountType\":\"CASH\",\"initialBalance\":\"0.00\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/accounts/7").header("Authorization", "Bearer admin")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"现金\",\"sortNo\":0,\"status\":\"ACTIVE\",\"version\":0}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/accounts/7?version=0").header("Authorization", "Bearer admin"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(store, audit);
     }
 
     @Test

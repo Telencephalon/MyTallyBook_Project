@@ -61,9 +61,6 @@ public class BootstrapTransactionService {
         if (config.initialized()) {
             throw new BusinessException(ErrorCode.ALREADY_INITIALIZED);
         }
-        if (config.maxUsers() < 1 || config.maxUsers() > 10) {
-            throw new BusinessException(ErrorCode.LEDGER_STATE_CONFLICT);
-        }
         if (authProperties.bootstrapKey().isEmpty()) {
             throw new BusinessException(ErrorCode.BOOTSTRAP_NOT_CONFIGURED);
         }
@@ -78,7 +75,7 @@ public class BootstrapTransactionService {
                 DEFAULT_NICKNAME,
                 now
         );
-        authStore.insertLedger(userId, config.maxUsers(), now);
+        authStore.insertLedger(userId, now);
         authStore.insertOwnerMembership(userId, now);
 
         int categoryCount = authStore.insertDefaultCategories();

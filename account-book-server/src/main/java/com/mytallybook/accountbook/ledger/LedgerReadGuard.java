@@ -21,8 +21,7 @@ public class LedgerReadGuard {
         try { config=auth.readAppConfig(); } catch (EmptyResultDataAccessException exception) { throw conflict(); }
         var ledger=members.readLedger().orElseThrow(LedgerReadGuard::conflict);
         var rows=members.readMembers();
-        if (!config.initialized() || config.maxUsers()<1 || config.maxUsers()>10 || ledger.id()!=1
-                || !"ACTIVE".equals(ledger.status()) || ledger.maxMembers()<1 || ledger.maxMembers()>10) throw conflict();
+        if (!config.initialized() || ledger.id()!=1 || !"ACTIVE".equals(ledger.status())) throw conflict();
         invariant.assertOwnerInvariant(ledger, rows);
         return new LedgerWriteGuard.LockedLedger(config,ledger,rows).requireActor(actor);
     }

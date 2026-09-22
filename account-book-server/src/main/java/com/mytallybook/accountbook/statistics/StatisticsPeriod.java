@@ -14,8 +14,17 @@ import java.time.temporal.ChronoUnit;
 import java.util.regex.Pattern;
 
 public record StatisticsPeriod(String monthText, LocalDate startInclusive, LocalDate endExclusive,
-                               LocalDate endInclusive, int selectedDays, RangeType rangeType) {
+                               LocalDate endInclusive, int selectedDays, RangeType rangeType, Long createdBy) {
     public enum RangeType { MONTH, RANGE, ALL }
+
+    public StatisticsPeriod(String monthText, LocalDate startInclusive, LocalDate endExclusive,
+                            LocalDate endInclusive, int selectedDays, RangeType rangeType) {
+        this(monthText, startInclusive, endExclusive, endInclusive, selectedDays, rangeType, null);
+    }
+
+    public StatisticsPeriod withCreator(Long creator) {
+        return new StatisticsPeriod(monthText, startInclusive, endExclusive, endInclusive, selectedDays, rangeType, creator);
+    }
 
     private static final ZoneId LEDGER_ZONE = ZoneId.of("Asia/Shanghai");
     private static final Pattern MONTH_TEXT = Pattern.compile("[1-9]\\d{3}-(?:0[1-9]|1[0-2])");

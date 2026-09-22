@@ -1,21 +1,22 @@
 <view class="page">
+  <text wx:if="{{!loading && !canManage}}" class="hint">共享分类和资金账户由所有者维护。</text>
   <view class="error-panel" wx:if="{{errorMessage}}">
     {{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
     <button wx:if="{{canRetryRead}}" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button>
     <button wx:if="{{canReload}}" disabled="{{loading || busy}}" bindtap="onReload">确认重新加载</button>
   </view>
   <view class="card form">
-    <text>名称</text><input value="{{name}}" bindinput="onNameInput" maxlength="40" disabled="{{loading || busy}}"/>
+    <text>名称</text><input value="{{name}}" bindinput="onNameInput" maxlength="40" disabled="{{!canManage || loading || busy}}"/>
     <block wx:if="{{!editing}}">
-      <text>账户类型</text><picker range="{{['CASH','WECHAT','BANK','ALIPAY','OTHER']}}" disabled="{{loading || busy}}" bindchange="onTypeChange"><view>{{accountType}}</view></picker>
-      <text>初始余额</text><input value="{{initialBalance}}" bindinput="onBalanceInput" type="digit" disabled="{{loading || busy}}"/>
+      <text>账户类型</text><picker range="{{['CASH','WECHAT','BANK','ALIPAY','OTHER']}}" disabled="{{!canManage || loading || busy}}" bindchange="onTypeChange"><view>{{accountType}}</view></picker>
+      <text>初始余额</text><input value="{{initialBalance}}" bindinput="onBalanceInput" type="digit" disabled="{{!canManage || loading || busy}}"/>
     </block>
     <block wx:else>
       <text>类型：{{accountType}}（创建后不可修改）</text>
       <text>初始余额：{{initialBalance}}</text><text>当前余额：{{currentBalance}}</text>
     </block>
-    <text>排序号</text><input value="{{sortNo}}" bindinput="onSortInput" type="number" disabled="{{loading || busy}}"/>
-    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" disabled="{{loading || busy}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
+    <text>排序号</text><input value="{{sortNo}}" bindinput="onSortInput" type="number" disabled="{{!canManage || loading || busy}}"/>
+    <text>状态</text><picker range="{{['ACTIVE','DISABLED']}}" disabled="{{!canManage || loading || busy}}" bindchange="onStatusChange"><view>{{status}}</view></picker>
     <button loading="{{busy}}" disabled="{{!canManage || loading || busy || canRetryRead}}" bindtap="onSubmit">保存</button>
   </view>
 </view>

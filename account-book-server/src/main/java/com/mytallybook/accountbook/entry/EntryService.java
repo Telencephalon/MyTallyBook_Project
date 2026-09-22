@@ -5,11 +5,11 @@ import com.mytallybook.accountbook.common.error.BusinessException;
 import com.mytallybook.accountbook.common.error.ErrorCode;
 import com.mytallybook.accountbook.common.validation.BookkeepingValidation;
 import com.mytallybook.accountbook.entry.store.EntryStore;
+import com.mytallybook.accountbook.ledger.DataScope;
 import com.mytallybook.accountbook.ledger.LedgerReadGuard;
 import com.mytallybook.accountbook.ledger.LedgerWriteGuard;
 import com.mytallybook.accountbook.member.store.MemberStore;
 import com.mytallybook.accountbook.security.CurrentUser;
-import com.mytallybook.accountbook.security.MemberRole;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,21 +39,24 @@ public class EntryService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public EntryModels.EntryPage list(CurrentUser actor, EntryFilters filters) {
         var member = readGuard.requireActor(actor);
-        var items = store.list(filters).stream().map(row -> view(row, member)).toList();
-        return new EntryModels.EntryPage(items, filters.page(), filters.pageSize(), store.count(filters));
+        var scoped = filters.withCreator(DataScope.creator(member, filters.createdBy()));
+        var items = store.list(scoped).stream().map(row -> view(row, member)).toList();
+        return new EntryModels.EntryPage(items, scoped.page(), scoped.pageSize(), store.count(scoped));
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public EntryModels.EntryView get(CurrentUser actor, long rawId) {
         long id = BookkeepingValidation.safeId(rawId);
         var member = readGuard.requireActor(actor);
-        return view(store.find(id).orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND)), member);
+        var row = store.find(id).filter(value -> DataScope.canAccess(member, value.createdBy()))
+                .orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND));
+        return view(row, member);
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public EntryModels.CreatorList creators(CurrentUser actor) {
-        readGuard.requireActor(actor);
-        return new EntryModels.CreatorList(store.creators().stream()
+        var member = readGuard.requireActor(actor);
+        return new EntryModels.CreatorList(store.creators(DataScope.creator(member, null)).stream()
                 .map(row -> new EntryModels.CreatorOption(BookkeepingValidation.safeId(row.userId()), row.displayName()))
                 .toList());
     }
@@ -65,8 +68,8 @@ public class EntryService {
         var existing = store.findByClientRequestId(clientRequestId);
         if (existing.isPresent()) {
             var row = existing.get();
-            if (row.deletedAt() != null) throw error(ErrorCode.ENTRY_IDEMPOTENCY_DELETED);
             if (row.createdBy() != member.userId()) throw error(ErrorCode.ENTRY_IDEMPOTENCY_CONFLICT);
+            if (row.deletedAt() != null) throw error(ErrorCode.ENTRY_IDEMPOTENCY_DELETED);
             return view(row, member);
         }
         var values = validate(body.entryType(), body.amount(), body.categoryId(), body.accountId(),
@@ -137,13 +140,13 @@ public class EntryService {
     }
 
     private static void requireMutation(MemberStore.MemberState actor, EntryStore.EntryRow row) {
-        if (actor.role() == MemberRole.MEMBER && row.createdBy() != actor.userId()) {
+        if (!DataScope.canAccess(actor, row.createdBy())) {
             throw error(ErrorCode.ACCESS_DENIED);
         }
     }
 
     private EntryModels.EntryView view(EntryStore.EntryRow row, MemberStore.MemberState actor) {
-        boolean allowed = actor.role() != MemberRole.MEMBER || row.createdBy() == actor.userId();
+        boolean allowed = DataScope.canAccess(actor, row.createdBy());
         return new EntryModels.EntryView(BookkeepingValidation.safeId(row.id()), row.entryType(),
                 BookkeepingValidation.moneyText(row.amount()), BookkeepingValidation.safeId(row.categoryId()),
                 row.categoryName(), row.categoryStatus(), BookkeepingValidation.safeId(row.accountId()),

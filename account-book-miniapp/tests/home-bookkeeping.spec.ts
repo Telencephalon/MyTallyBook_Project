@@ -13,7 +13,7 @@ function runtimeFor(currentUser: UserProfile | null = user) {
     session: { getRevision: () => revision, getToken: () => 'token', getUser: () => currentUser, getLedger: () => ledger },
     flow: { refreshContext: vi.fn().mockResolvedValue(undefined), logout: vi.fn().mockResolvedValue('UNCHANGED') },
     statistics: { summary: vi.fn().mockResolvedValue(summary) },
-    entries: { list: vi.fn().mockResolvedValue({ items: [entry], page: 1, pageSize: 5, total: 1 }) },
+    entries: { creators: vi.fn().mockResolvedValue({ items: [] }), list: vi.fn().mockResolvedValue({ items: [entry], page: 1, pageSize: 5, total: 1 }) },
     setRevision(value: number) { revision = value },
   }
 }
@@ -33,6 +33,31 @@ async function loadPage(runtime: ReturnType<typeof runtimeFor>) {
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('home bookkeeping dashboard', () => {
+  it('opens the tapped recent bill directly and keeps all-details navigation separate', async () => {
+    const page = await loadPage(runtimeFor())
+    await page.onShow()
+    page.openRecentEntry({ currentTarget: { dataset: { id: 40 } } })
+    expect(wx.navigateTo).toHaveBeenLastCalledWith({ url: '/pages/entry-detail/index?id=40' })
+    page.openEntries()
+    expect(wx.navigateTo).toHaveBeenLastCalledWith({ url: '/pages/entry-list/index' })
+  })
+
+  it('does not open unknown, hidden or stale-identity recent bills', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    await page.onShow()
+    const tap = (id = 40) => page.openRecentEntry({ currentTarget: { dataset: { id } } })
+    tap(999)
+    page.setData({ loggingOut: true }); tap()
+    page.setData({ loggingOut: false, loading: true }); tap()
+    page.setData({ loading: false })
+    page.onHide(); tap()
+    await page.onShow()
+    runtime.setRevision(2); tap()
+    expect(wx.navigateTo).not.toHaveBeenCalled()
+    expect(page.data.recentEntries).toEqual([])
+  })
+
   it.each(['ADMIN', 'MEMBER'] as const)('hides catalog and blocks home catalog navigation for %s', async role => {
     const runtime = runtimeFor({ ...user, role })
     const page = await loadPage(runtime)

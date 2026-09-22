@@ -495,6 +495,85 @@ describe.each(['entry-create', 'entry-edit'] as const)('%s direct type selection
 })
 
 describe('entry list/detail/edit pages', () => {
+  it('quick filter controls do not inherit the full-panel toggle', () => {
+    const wxml = readFileSync(new URL('../miniprogram/pages/entry-list/index.wxml', import.meta.url), 'utf8')
+    expect(wxml.match(/<view class="filter-toggle"[^>]*>/)?.[0]).not.toContain('bindtap=')
+    for (const handler of ['onQuickCategory', 'onQuickType', 'onCreator']) {
+      expect(wxml).toContain(`bindchange="${handler}"`)
+    }
+    expect(wxml).toContain('bindtap="toggleDateFilter"')
+  })
+
+  it('quick category and type immediately refresh only their selection and reset pagination', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    page.setData({ page: 3, keyword: '午餐', accountId: 8 })
+    await page.onQuickCategory({ detail: { value: '1' } })
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ categoryId: 7, page: 1, keyword: '午餐', accountId: 8 }))
+    expect(page.data.filtersExpanded).toBe(false)
+    await page.onQuickType({ detail: { value: '2' } })
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ entryType: 'INCOME', categoryId: 7, page: 1 }))
+    await page.onQuickCategory({ detail: { value: '0' } })
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ categoryId: undefined, entryType: 'INCOME', accountId: 8 }))
+    await page.onQuickType({ detail: { value: '0' } })
+    expect(runtime.entries.list.mock.lastCall?.[0]?.entryType).toBeUndefined()
+    expect(runtime.catalog.categories).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores invalid and duplicate quick selections', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    runtime.entries.list.mockClear()
+    for (const value of ['-1', '1.5', '100', 'bad', '0']) {
+      await page.onQuickType({ detail: { value } })
+      await page.onQuickCategory({ detail: { value } })
+    }
+    expect(runtime.entries.list).not.toHaveBeenCalled()
+    expect(page.data).toMatchObject({ entryType: '', categoryId: 0, filtersExpanded: false })
+  })
+
+  it('opens only date controls and applies its draft on confirmation', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    page.setData({ page: 3, categoryId: 7 })
+    runtime.entries.list.mockClear()
+    page.toggleDateFilter()
+    expect(page.data).toMatchObject({ dateFilterExpanded: true, filtersExpanded: false })
+    page.onDateDraftFrom({ detail: { value: '2026-09-01' } })
+    page.onDateDraftTo({ detail: { value: '2026-09-22' } })
+    expect(page.data.dateFrom).toBe('')
+    expect(runtime.entries.list).not.toHaveBeenCalled()
+    await page.applyDateFilter()
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ dateFrom: '2026-09-01', dateTo: '2026-09-22', categoryId: 7, page: 1 }))
+    expect(page.data.dateFilterExpanded).toBe(false)
+    page.toggleDateFilter()
+    await page.clearDateFilter()
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ dateFrom: undefined, dateTo: undefined, categoryId: 7 }))
+  })
+
+  it('rejects reversed dates and discards date drafts when cancelled or advanced filters open', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    runtime.entries.list.mockClear()
+    page.toggleDateFilter()
+    page.onDateDraftFrom({ detail: { value: '2026-09-22' } })
+    page.onDateDraftTo({ detail: { value: '2026-09-01' } })
+    await page.applyDateFilter()
+    expect(page.data.dateFilterError).toBe('开始日期不能晚于结束日期')
+    expect(runtime.entries.list).not.toHaveBeenCalled()
+    page.toggleDateFilter()
+    expect(page.data).toMatchObject({ dateFilterExpanded: false, dateFrom: '', dateTo: '' })
+    page.toggleDateFilter()
+    expect(page.data).toMatchObject({ dateDraftFrom: '', dateDraftTo: '', dateFilterError: '' })
+    page.toggleFilters()
+    expect(page.data).toMatchObject({ dateFilterExpanded: false, filtersExpanded: true })
+    expect(runtime.entries.list).not.toHaveBeenCalled()
+  })
+
   it('entry-list exposes a read retry after a failed load', async () => {
     const runtime = runtimeFor()
     runtime.entries.list.mockRejectedValueOnce(new Error('offline'))
@@ -563,6 +642,7 @@ describe('entry list/detail/edit pages', () => {
 
   it('list applies every filter, resets pagination, and loads historical creators', async () => {
     const runtime = runtimeFor()
+    vi.spyOn(runtime.session, 'getUser').mockReturnValue({ userId: 2, role: 'OWNER', nickname: '所有者', displayName: null })
     const page = await loadPage('entry-list', runtime)
     await page.onShow()
     page.setData({ page: 3, dateFrom: '2026-09-01', dateTo: '2026-09-06', entryType: 'EXPENSE', categoryId: 7, accountId: 8, createdBy: 2, keyword: '%_\\' })

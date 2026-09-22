@@ -87,6 +87,16 @@ class InviteServiceTests {
         verify(auth,never()).lockAppConfig(); verify(members,never()).lockLedger(); verify(members,never()).lockMembers();
         verifyNoInteractions(audit);
     }
+    @ParameterizedTest @CsvSource({"0, 10", "10, 0", "11, 10", "10, 11", "1, 1"})
+    void legacyCapacityDoesNotBlockInvitationAdministration(int legacyMaxUsers, int legacyMaxMembers) {
+        when(auth.readAppConfig()).thenReturn(new AuthStore.AppConfigState(true,legacyMaxUsers,1));
+        when(members.readLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1,1,legacyMaxMembers,"ACTIVE",1)));
+        when(invites.count(null,now)).thenReturn(1L);
+        when(invites.list(null,now,20,0)).thenReturn(List.of(new InviteView(51,1,"Owner",now,now.plusSeconds(60),"ACTIVE",null,null)));
+        var result=service.list(actor,1,20,null);
+        assertThat(result.total()).isEqualTo(1);
+        assertThat(result.items().getFirst().id()).isEqualTo(51L);
+    }
     @Test void acceptsAfterNetworkExchangeOutsideDatabaseTransaction() {
         when(wechat.exchange("code")).thenAnswer(call->{
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();

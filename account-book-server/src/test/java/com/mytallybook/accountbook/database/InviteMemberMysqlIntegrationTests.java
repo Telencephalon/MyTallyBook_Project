@@ -109,28 +109,28 @@ class InviteMemberMysqlIntegrationTests {
         if (database != null) database.close();
     }
 
-    // Catches capacity checks based on stale counts, premature invite use, or loser residue.
+    // Catches accidental legacy capacity enforcement while preserving single-use invitations.
     @ParameterizedTest @EnumSource(Isolation.class)
-    void group1_lastSeatAndEleventhRejection(Isolation isolation) throws Exception {
+    void group1_concurrentInvitationsAdmitEleventhAndTwelfthMembers(Isolation isolation) throws Exception {
         for (boolean reverse : List.of(false, true)) {
             fresh(isolation);
-            for (int i = 0; i < 8; i++) join("seed-" + i);
+            for (int i = 0; i < 9; i++) join("seed-" + i);
             CreatedInvite a = create(owner), b = create(owner);
-            String winner = reverse ? "candidate-b" : "candidate-a";
-            String loser = reverse ? "candidate-a" : "candidate-b";
-            CreatedInvite winning = reverse ? b : a, losing = reverse ? a : b;
-            Pair result = ordered(configAfter(), () -> accept(winner, winning, "seat-win"),
-                    () -> accept(loser, losing, "seat-lose"));
-            AuthResult accepted = result.first.success(AuthResult.class);
-            result.second.error(ErrorCode.MEMBER_LIMIT_REACHED);
-            assertThat(activeCount()).isEqualTo(10);
-            assertAccepted(winning, accepted, winner, "seat-win");
-            assertThat(number("SELECT COUNT(*) FROM ledger_invite WHERE id IN (?,?) AND status='USED'", a.id(), b.id())).isEqualTo(1);
-            assertUnused(losing);
-            assertNoIdentity(loser, "seat-lose");
-            attempt(() -> accept("eleventh", losing, "eleventh")).error(ErrorCode.MEMBER_LIMIT_REACHED);
-            assertNoIdentity("eleventh", "eleventh");
-            assertUnused(losing);
+            String first = reverse ? "candidate-b" : "candidate-a";
+            String second = reverse ? "candidate-a" : "candidate-b";
+            CreatedInvite firstInvite = reverse ? b : a, secondInvite = reverse ? a : b;
+            Pair result = ordered(configAfter(), () -> accept(first, firstInvite, "eleventh"),
+                    () -> accept(second, secondInvite, "twelfth"));
+            assertAccepted(firstInvite, result.first.success(AuthResult.class), first, "eleventh");
+            assertAccepted(secondInvite, result.second.success(AuthResult.class), second, "twelfth");
+            assertThat(activeCount()).isEqualTo(12);
+            assertThat(number("SELECT COUNT(*) FROM ledger_invite WHERE id IN (?,?) AND status='USED'", a.id(), b.id())).isEqualTo(2);
+            assertThat(members.list(owner).maxMembers()).isNull();
+            assertThat(number("SELECT max_users FROM app_config WHERE id=1")).isEqualTo(10);
+            assertThat(number("SELECT max_members FROM ledger WHERE id=1")).isEqualTo(10);
+            attempt(() -> accept("reused-invite", secondInvite, "reused-invite")).error(ErrorCode.INVITE_USED);
+            assertNoIdentity("reused-invite", "reused-invite");
+            assertThat(activeCount()).isEqualTo(12);
         }
     }
 

@@ -1,1 +1,25 @@
-.toolbar,.row{display:flex;justify-content:space-between;align-items:center;gap:20rpx}.row{margin-bottom:18rpx}.row>view{display:flex;flex-direction:column;gap:8rpx}.muted,.empty{color:#667085;font-size:24rpx}
+@import '../../styles/catalog.wxss';
+
+.account-page .account-card { padding: 24rpx 26rpx; border-left-width: 8rpx; border-left-style: solid; }
+.account-page .account-wechat { background: linear-gradient(115deg,#e2f5e9,#f6fbf8); border-left-color: #59ad79; }
+.account-page .account-alipay { background: linear-gradient(115deg,#fff0d9,#fffbf4); border-left-color: #e8ad52; }
+.account-page .account-bank { background: linear-gradient(115deg,#e2effe,#f7faff); border-left-color: #6b9bd8; }
+.account-page .account-cash { background: linear-gradient(115deg,#edf0f5,#fafbfc); border-left-color: #99a4b5; }
+.account-page .account-other { background: linear-gradient(115deg,#eee9fb,#fbfaff); border-left-color: #a495d5; }
+.account-heading { display: flex; align-items: center; gap: 16rpx; min-width: 0; }
+.account-symbol { display: flex; align-items: center; justify-content: center; flex: none; width: 64rpx; height: 64rpx; border-radius: 18rpx; background: rgba(255,255,255,.75); font-size: 34rpx; font-weight: 600; }
+.account-wechat .account-symbol { color: #459c6e; }
+.account-alipay .account-symbol { color: #cc903a; }
+.account-bank .account-symbol { color: #5289cc; }
+.account-cash .account-symbol { color: #7c879a; }
+.account-other .account-symbol { color: #8e7ab9; }
+.account-copy { flex: 1; min-width: 0; }
+.account-type { display: block; margin-top: 2rpx; font-size: 22rpx; color: #7b8695; }
+.account-balance { display: flex; flex-direction: column; gap: 6rpx; margin: 22rpx 0 20rpx; }
+.balance-label { color: #6d7b85; font-size: 22rpx; }
+.currency { margin-left: 6rpx; font-size: 20rpx; opacity: .85; }
+.balance-value { color: #2c4650; font-size: 44rpx; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; word-break: break-all; }
+.balance-value.balance-negative { color: #ad514b; }
+.account-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12rpx 20rpx; padding-top: 18rpx; border-top: 1rpx solid rgba(126,147,169,.16); font-size: 22rpx; line-height: 1.5; color: #73818e; }
+.initial-balance { min-width: 0; overflow-wrap: anywhere; word-break: break-all; }
+.account-meta { display: flex; align-items: center; gap: 14rpx; flex-shrink: 0; }

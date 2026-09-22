@@ -1,1 +1,12 @@
-.toolbar,.row{display:flex;justify-content:space-between;align-items:center;gap:20rpx}.row{margin-bottom:18rpx}.row>view{display:flex;flex-direction:column;gap:8rpx}.muted,.empty{color:#667085;font-size:24rpx}.create-button{background:#1677ff;color:#fff;font-weight:600;padding:0 28rpx;box-shadow:0 6rpx 14rpx rgba(22,119,255,.25)}
+@import '../../styles/catalog.wxss';
+
+.category-page .category-card { display: flex; align-items: center; gap: 20rpx; padding: 24rpx 16rpx 24rpx 24rpx; min-height: 142rpx; }
+.category-symbol { display: flex; align-items: center; justify-content: center; flex: none; width: 76rpx; height: 76rpx; border-radius: 20rpx; font-size: 40rpx; }
+.tone-mint { background: #e3f5ed; color: #4b9b7a; }
+.tone-amber { background: #fff2d3; color: #bd8e2e; }
+.tone-peach { background: #ffebe1; color: #cf8257; }
+.tone-blue { background: #e3f2ff; color: #60a5dc; }
+.tone-violet { background: #eee7fa; color: #bc76b2; }
+.tone-slate { background: #edf0f5; color: #8995a8; }
+.category-copy { flex: 1; min-width: 0; }
+.category-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx; margin-top: 10rpx; color: #7c8595; font-size: 22rpx; line-height: 1.5; }

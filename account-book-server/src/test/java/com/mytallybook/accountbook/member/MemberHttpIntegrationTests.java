@@ -57,7 +57,7 @@ class MemberHttpIntegrationTests {
                     .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("OK"))
                     .andExpect(jsonPath("$.requestId").value("members-list"))
                     .andExpect(jsonPath("$.data.activeCount").value(3))
-                    .andExpect(jsonPath("$.data.maxMembers").value(8))
+                    .andExpect(jsonPath("$.data.maxMembers").value(org.hamcrest.Matchers.nullValue()))
                     .andExpect(jsonPath("$.data.ownerUserId").value(1))
                     .andExpect(jsonPath("$.data.items[0].memberId").value(11))
                     .andExpect(jsonPath("$.data.items[0].userId").value(1))

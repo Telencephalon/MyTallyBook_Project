@@ -3,6 +3,7 @@ package com.mytallybook.accountbook.statistics;
 import com.mytallybook.accountbook.common.error.BusinessException;
 import com.mytallybook.accountbook.common.error.ErrorCode;
 import com.mytallybook.accountbook.common.validation.BookkeepingValidation;
+import com.mytallybook.accountbook.ledger.DataScope;
 import com.mytallybook.accountbook.ledger.LedgerReadGuard;
 import com.mytallybook.accountbook.security.CurrentUser;
 import com.mytallybook.accountbook.statistics.store.StatisticsStore;
@@ -43,8 +44,13 @@ public class StatisticsService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public StatisticsModels.MonthlySummary summary(CurrentUser actor, String month, String range,
                                                     String startDate, String endDate) {
-        var period = StatisticsPeriod.parse(month, range, startDate, endDate, clock);
-        readGuard.requireActor(actor);
+        return summary(actor, month, range, startDate, endDate, null);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public StatisticsModels.MonthlySummary summary(CurrentUser actor, String month, String range,
+                                                    String startDate, String endDate, String createdBy) {
+        var period = scopedPeriod(actor, month, range, startDate, endDate, createdBy);
         var row = store.summary(period);
         var metadata = metadata(period);
         return new StatisticsModels.MonthlySummary(period.monthText(), money(row.income()), money(row.expense()),
@@ -60,9 +66,14 @@ public class StatisticsService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public StatisticsModels.DailyTrend daily(CurrentUser actor, String month, String range,
                                              String startDate, String endDate, String rawPage) {
-        var period = StatisticsPeriod.parse(month, range, startDate, endDate, clock);
+        return daily(actor, month, range, startDate, endDate, rawPage, null);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public StatisticsModels.DailyTrend daily(CurrentUser actor, String month, String range,
+                                             String startDate, String endDate, String rawPage, String createdBy) {
+        var period = scopedPeriod(actor, month, range, startDate, endDate, createdBy);
         int page = parsePage(rawPage);
-        readGuard.requireActor(actor);
         var metadata = metadata(period);
         long totalDays = days(metadata);
         long totalPages = totalDays == 0 ? 0 : (totalDays + DAILY_PAGE_SIZE - 1) / DAILY_PAGE_SIZE;
@@ -99,8 +110,13 @@ public class StatisticsService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public StatisticsModels.Ranking categories(CurrentUser actor, String month, String range,
                                                String startDate, String endDate, String entryType) {
-        var values = rankingInputs(month, range, startDate, endDate, entryType);
-        readGuard.requireActor(actor);
+        return categories(actor, month, range, startDate, endDate, entryType, null);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public StatisticsModels.Ranking categories(CurrentUser actor, String month, String range,
+                                               String startDate, String endDate, String entryType, String createdBy) {
+        var values = rankingInputs(actor, month, range, startDate, endDate, entryType, createdBy);
         return ranking(values.period, values.entryType, metadata(values.period),
                 store.categories(values.period, values.entryType));
     }
@@ -113,8 +129,13 @@ public class StatisticsService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public StatisticsModels.AccountStatistics accounts(CurrentUser actor, String month, String range,
                                                        String startDate, String endDate) {
-        var period = StatisticsPeriod.parse(month, range, startDate, endDate, clock);
-        readGuard.requireActor(actor);
+        return accounts(actor, month, range, startDate, endDate, null);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public StatisticsModels.AccountStatistics accounts(CurrentUser actor, String month, String range,
+                                                       String startDate, String endDate, String createdBy) {
+        var period = scopedPeriod(actor, month, range, startDate, endDate, createdBy);
         var items = store.accounts(period).stream().map(row -> new StatisticsModels.AccountItem(
                 BookkeepingValidation.safeId(row.id()), row.name(), money(row.income()), money(row.expense()),
                 money(row.income().subtract(row.expense())), row.entryCount())).toList();
@@ -131,19 +152,42 @@ public class StatisticsService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public StatisticsModels.Ranking members(CurrentUser actor, String month, String range,
                                             String startDate, String endDate, String entryType) {
-        var values = rankingInputs(month, range, startDate, endDate, entryType);
-        readGuard.requireActor(actor);
+        return members(actor, month, range, startDate, endDate, entryType, null);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public StatisticsModels.Ranking members(CurrentUser actor, String month, String range,
+                                            String startDate, String endDate, String entryType, String createdBy) {
+        var values = rankingInputs(actor, month, range, startDate, endDate, entryType, createdBy);
         return ranking(values.period, values.entryType, metadata(values.period),
                 store.members(values.period, values.entryType));
     }
 
-    private RankingInputs rankingInputs(String month, String range, String startDate, String endDate,
-                                        String rawEntryType) {
-        var period = StatisticsPeriod.parse(month, range, startDate, endDate, clock);
+    private RankingInputs rankingInputs(CurrentUser actor, String month, String range, String startDate, String endDate,
+                                        String rawEntryType, String createdBy) {
+        var period = scopedPeriod(actor, month, range, startDate, endDate, createdBy);
         String entryType = rawEntryType == null ? "EXPENSE"
                 : "ALL".equals(rawEntryType) ? null
                 : BookkeepingValidation.oneOf(rawEntryType, ENTRY_TYPES);
         return new RankingInputs(period, entryType);
+    }
+
+    private StatisticsPeriod scopedPeriod(CurrentUser actor, String month, String range,
+                                          String startDate, String endDate, String createdBy) {
+        var period = StatisticsPeriod.parse(month, range, startDate, endDate, clock);
+        Long requestedCreator = parseCreator(createdBy);
+        var member = readGuard.requireActor(actor);
+        return period.withCreator(DataScope.creator(member, requestedCreator));
+    }
+
+    private static Long parseCreator(String value) {
+        if (value == null) return null;
+        if (!value.matches("[1-9]\\d*")) throw invalid();
+        try {
+            return BookkeepingValidation.safeId(Long.parseLong(value));
+        } catch (NumberFormatException exception) {
+            throw invalid();
+        }
     }
 
     private static StatisticsModels.Ranking ranking(StatisticsPeriod period, String entryType,

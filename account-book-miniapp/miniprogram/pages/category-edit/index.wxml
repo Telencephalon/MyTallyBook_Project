@@ -1,4 +1,5 @@
 <view class="page">
+  <text wx:if="{{!loading && !canManage}}" class="hint">共享分类和资金账户由所有者维护。</text>
   <view class="error-panel" wx:if="{{errorMessage}}">
     {{errorMessage}}
     <text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
@@ -6,13 +7,13 @@
     <button wx:if="{{canReload}}" disabled="{{loading || busy}}" bindtap="onReload">确认重新加载</button>
   </view>
   <view class="card form">
-    <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput" disabled="{{loading || busy}}"/>
+    <text>名称</text><input maxlength="40" value="{{name}}" bindinput="onNameInput" disabled="{{!canManage || loading || busy}}"/>
     <text>收支类型{{editing ? '（不可修改）' : ''}}</text>
-    <picker disabled="{{loading || busy}}" range="{{['支出','收入','收支']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : entryType === 'INCOME' ? '收入' : '收支'}}</view></picker>
-    <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput" disabled="{{loading || busy}}"/>
-    <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput" disabled="{{loading || busy}}"/>
-    <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput" disabled="{{loading || busy}}"/>
-    <text>状态</text><picker range="{{['启动','禁用']}}" disabled="{{loading || busy}}" bindchange="onStatusChange"><view>{{status === 'ACTIVE' ? '启动' : '禁用'}}</view></picker>
+    <picker disabled="{{!canManage || loading || busy}}" range="{{['支出','收入','收支']}}" bindchange="onTypeChange"><view>{{entryType === 'EXPENSE' ? '支出' : entryType === 'INCOME' ? '收入' : '收支'}}</view></picker>
+    <text>图标标识（可空）</text><input value="{{icon}}" bindinput="onIconInput" disabled="{{!canManage || loading || busy}}"/>
+    <text>颜色 #RRGGBB（可空）</text><input value="{{color}}" bindinput="onColorInput" disabled="{{!canManage || loading || busy}}"/>
+    <text>排序号</text><input type="number" value="{{sortNo}}" bindinput="onSortInput" disabled="{{!canManage || loading || busy}}"/>
+    <text>状态</text><picker range="{{['启动','禁用']}}" disabled="{{!canManage || loading || busy}}" bindchange="onStatusChange"><view>{{status === 'ACTIVE' ? '启动' : '禁用'}}</view></picker>
     <button loading="{{busy}}" disabled="{{!canManage || loading || busy || canRetryRead}}" bindtap="onSubmit">保存</button>
   </view>
 </view>

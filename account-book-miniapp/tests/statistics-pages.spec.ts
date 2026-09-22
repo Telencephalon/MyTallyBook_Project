@@ -21,7 +21,8 @@ function deferred<T>() {
 function runtimeFor() {
   let revision = 1
   return {
-    session: { getRevision: () => revision },
+    session: { getRevision: () => revision, getUser: () => ({ userId: 1, ledgerId: 1, role: 'OWNER' }) },
+    entries: { creators: vi.fn().mockResolvedValue({ items: [] }) },
     flow: { refreshContext: vi.fn().mockResolvedValue(undefined) },
     statistics: {
       summary: vi.fn().mockResolvedValue(summary), daily: vi.fn().mockResolvedValue(daily),
@@ -47,6 +48,141 @@ async function loadPage(runtime: ReturnType<typeof runtimeFor>) {
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('statistics page', () => {
+  it('ranks the same member separately by income and expense with independent totals', async () => {
+    const runtime = runtimeFor()
+    runtime.statistics.members.mockImplementation(async (_query, entryType) => {
+      if (entryType === 'INCOME') return { ...members, entryType, total: '123.00', items: [
+        { id: 1, name: 'Gitta', amount: '92.25', percentage: '75.00', entryCount: 1 },
+        { id: 2, name: '成员二', amount: '30.75', percentage: '25.00', entryCount: 1 },
+      ] }
+      return { ...members, entryType, total: '5121.00', items: [
+        { id: 1, name: 'Gitta', amount: '5121.00', percentage: '100.00', entryCount: 1 },
+      ] }
+    })
+    const page = await loadPage(runtime)
+    await page.onShow()
+    expect(page.data.memberGroups).toEqual([
+      { entryType: 'INCOME', label: '收入', total: '123.00', items: [
+        { id: 1, name: 'Gitta', amount: '92.25', percentage: '75.00', entryCount: 1, width: 75 },
+        { id: 2, name: '成员二', amount: '30.75', percentage: '25.00', entryCount: 1, width: 25 },
+      ] },
+      { entryType: 'EXPENSE', label: '支出', total: '5121.00', items: [
+        { id: 1, name: 'Gitta', amount: '5121.00', percentage: '100.00', entryCount: 1, width: 100 },
+      ] },
+    ])
+    expect(runtime.statistics.members).not.toHaveBeenCalledWith(expect.anything(), 'ALL')
+  })
+
+  it('switches member ranking direction and preserves an empty income group without mixing expenses', async () => {
+    const runtime = runtimeFor()
+    runtime.statistics.members.mockImplementation(async (_query, entryType) => ({
+      ...members, entryType, ...(entryType === 'INCOME' ? { total: '0.00', items: [] } : {}),
+    }))
+    const page = await loadPage(runtime)
+    await page.onShow()
+    await page.onDirectionChange({ detail: { value: '0' } })
+    expect(page.data.memberGroups).toEqual([expect.objectContaining({ entryType: 'EXPENSE', total: '30.05' })])
+    await page.onDirectionChange({ detail: { value: '1' } })
+    expect(page.data.memberGroups).toEqual([{ entryType: 'INCOME', label: '收入', total: '0.00', items: [] }])
+    await page.onDirectionChange({ detail: { value: '2' } })
+    expect(page.data.memberGroups).toHaveLength(2)
+    expect(page.data.memberGroups[0]).toMatchObject({ entryType: 'INCOME', total: '0.00', items: [] })
+    expect(page.data.loadState).toBe('ready')
+  })
+
+  it('clears member groups if either directional ranking fails', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    await page.onShow()
+    runtime.statistics.members.mockImplementation(async (_query, entryType) => {
+      if (entryType === 'EXPENSE') throw new Error('expense ranking offline')
+      return { ...members, entryType }
+    })
+    await page.onDirectionChange({ detail: { value: '2' } })
+    expect(page.data.memberGroups).toEqual([])
+    expect(page.data.loadState).toBe('error')
+    expect(page.data.loading).toBe(false)
+  })
+
+  it('keeps income and expense category amounts and percentages separate for the same category', async () => {
+    const runtime = runtimeFor()
+    runtime.statistics.summary.mockResolvedValue({ ...summary, income: '123.00', expense: '3456.00', net: '-3333.00' })
+    runtime.statistics.categories.mockImplementation(async (_query, entryType) => {
+      if (entryType === 'INCOME') return { ...categories, entryType, total: '123.00', items: [
+        { id: 7, name: '生活', amount: '30.75', percentage: '25.00', entryCount: 1 },
+        { id: 8, name: '人情', amount: '92.25', percentage: '75.00', entryCount: 1 },
+      ] }
+      if (entryType === 'EXPENSE') return { ...categories, entryType, total: '3456.00', items: [
+        { id: 7, name: '生活', amount: '3456.00', percentage: '100.00', entryCount: 1 },
+      ] }
+      return { ...categories, entryType, total: '3579.00' }
+    })
+    const page = await loadPage(runtime)
+    await page.onShow()
+
+    expect(page.data.categoryGroups).toEqual([
+      { entryType: 'INCOME', label: '收入', total: '123.00', items: [
+        { id: 7, name: '生活', amount: '30.75', percentage: '25.00', entryCount: 1, width: 25 },
+        { id: 8, name: '人情', amount: '92.25', percentage: '75.00', entryCount: 1, width: 75 },
+      ] },
+      { entryType: 'EXPENSE', label: '支出', total: '3456.00', items: [
+        { id: 7, name: '生活', amount: '3456.00', percentage: '100.00', entryCount: 1, width: 100 },
+      ] },
+    ])
+    expect(runtime.statistics.categories).not.toHaveBeenCalledWith(expect.anything(), 'ALL')
+  })
+
+  it('filters category groups by direction and keeps an empty direction distinct from an error', async () => {
+    const runtime = runtimeFor()
+    runtime.statistics.categories.mockImplementation(async (_query, entryType) => ({
+      ...categories, entryType, ...(entryType === 'INCOME' ? { total: '0.00', items: [] } : {}),
+    }))
+    const page = await loadPage(runtime)
+    await page.onShow()
+    await page.onDirectionChange({ detail: { value: '0' } })
+    expect(page.data.categoryGroups).toHaveLength(1)
+    expect(page.data.categoryGroups[0]).toMatchObject({ entryType: 'EXPENSE', total: '30.05' })
+    await page.onDirectionChange({ detail: { value: '1' } })
+    expect(page.data.categoryGroups).toEqual([{ entryType: 'INCOME', label: '收入', total: '0.00', items: [] }])
+    await page.onDirectionChange({ detail: { value: '2' } })
+    expect(page.data.categoryGroups).toHaveLength(2)
+    expect(page.data.categoryGroups[0]).toMatchObject({ entryType: 'INCOME', total: '0.00', items: [] })
+    expect(page.data.loadState).toBe('ready')
+    expect(page.data.errorMessage).toBe('')
+  })
+
+  it('ignores a late category half from an obsolete all-direction request', async () => {
+    const runtime = runtimeFor()
+    const pendingExpense = deferred<typeof categories>()
+    runtime.statistics.categories.mockImplementation(async (_query, entryType) => entryType === 'EXPENSE'
+      ? pendingExpense.promise : { ...categories, entryType, total: '123.00' })
+    const page = await loadPage(runtime)
+    const initialLoad = page.onShow()
+    await Promise.resolve(); await Promise.resolve()
+    await page.onDirectionChange({ detail: { value: '1' } })
+    const latest = structuredClone(page.data.categoryGroups)
+    expect(latest).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '123.00' })])
+    pendingExpense.resolve({ ...categories, total: '999.00' })
+    await initialLoad
+    expect(page.data.categoryGroups).toEqual(latest)
+    expect(page.data.loading).toBe(false)
+  })
+
+  it('clears category groups when either direction fails instead of presenting a partial breakdown', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    await page.onShow()
+    runtime.statistics.categories.mockImplementation(async (_query, entryType) => {
+      if (entryType === 'EXPENSE') throw new Error('expense categories offline')
+      return { ...categories, entryType }
+    })
+    await page.onDirectionChange({ detail: { value: '2' } })
+    expect(page.data.categoryGroups).toEqual([])
+    expect(page.data.loadState).toBe('error')
+    expect(page.data.errorMessage).not.toBe('')
+    expect(page.data.loading).toBe(false)
+  })
+
   it('uses the approved navigation title', () => {
     const config = JSON.parse(readFileSync(resolve(__dirname, '../miniprogram/pages/statistics/index.json'), 'utf8'))
     expect(config.navigationBarTitleText).toBe('统计')
@@ -75,7 +211,7 @@ describe('statistics page', () => {
 
     await page.onShow()
 
-    expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-01')
+    expect(runtime.statistics.summary).not.toHaveBeenCalled()
     expect(page.data.month).toBe('2024-01')
   })
 
@@ -87,9 +223,11 @@ describe('statistics page', () => {
     await page.onShow()
     expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-09')
     expect(runtime.statistics.daily).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'ALL')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'EXPENSE')
     expect(runtime.statistics.accounts).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'ALL')
+    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'INCOME')
+    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'EXPENSE')
 
     Object.values(runtime.statistics).forEach(mock => mock.mockClear())
     await page.onDirectionChange({ detail: { value: '1' } })
@@ -108,8 +246,10 @@ describe('statistics page', () => {
     await page.onDirectionChange({ detail: { value: '2' } })
     expect(page.data.directionLabels).toEqual(['支出', '收入', '全部'])
     expect(page.data.entryType).toBe('ALL')
-    expect(runtime.statistics.categories).toHaveBeenLastCalledWith(expect.anything(), 'ALL')
-    expect(runtime.statistics.members).toHaveBeenLastCalledWith(expect.anything(), 'ALL')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(expect.anything(), 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenLastCalledWith(expect.anything(), 'EXPENSE')
+    expect(runtime.statistics.members).toHaveBeenCalledWith(expect.anything(), 'INCOME')
+    expect(runtime.statistics.members).toHaveBeenLastCalledWith(expect.anything(), 'EXPENSE')
   })
 
   it('month switching reloads all five views and stale out-of-order data cannot overwrite it', async () => {
@@ -158,8 +298,8 @@ describe('statistics page', () => {
     expect(page.data.summary.net).toBe('88.00')
     expect(page.data.daily).not.toEqual([])
     expect(page.data.accountItems).not.toEqual([])
-    expect(page.data.categoryTotal).toBe('100.30')
-    expect(page.data.memberTotal).toBe('100.30')
+    expect(page.data.categoryGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '100.30' })])
+    expect(page.data.memberGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '100.30' })])
     expect(runtime.statistics.summary).toHaveBeenCalledTimes(2)
     expect(runtime.statistics.categories).toHaveBeenLastCalledWith('2024-09', 'INCOME')
   })
@@ -195,8 +335,8 @@ describe('statistics page', () => {
     expect(page.data.summary.net).toBe('8.00')
     expect(page.data.daily).not.toEqual([])
     expect(page.data.accountItems).not.toEqual([])
-    expect(page.data.categoryTotal).toBe('80.00')
-    expect(page.data.memberTotal).toBe('80.00')
+    expect(page.data.categoryGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '80.00' })])
+    expect(page.data.memberGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '80.00' })])
     expect(page.data.errorMessage).toBe('')
     expect(runtime.statistics.categories).toHaveBeenLastCalledWith('2024-08', 'INCOME')
   })
@@ -289,9 +429,9 @@ describe('statistics page', () => {
 
     expect(page.data.summary).toBeNull()
     expect(page.data.daily).toEqual([])
-    expect(page.data.categoryItems).toEqual([])
+    expect(page.data.categoryGroups).toEqual([])
     expect(page.data.accountItems).toEqual([])
-    expect(page.data.memberItems).toEqual([])
+    expect(page.data.memberGroups).toEqual([])
     expect(page.data.loadState).toBe('error')
     expect(page.data.errorMessage).not.toBe('')
     expect(page.data.loading).toBe(false)
@@ -300,9 +440,9 @@ describe('statistics page', () => {
   it('zero-entry current response is an empty state rather than a read error', async () => {
     const runtime = runtimeFor()
     runtime.statistics.summary.mockResolvedValueOnce({ ...summary, income: '0.00', expense: '0.00', net: '0.00', entryCount: 0 })
-    runtime.statistics.categories.mockResolvedValueOnce({ ...categories, total: '0.00', items: [] })
+    runtime.statistics.categories.mockResolvedValue({ ...categories, total: '0.00', items: [] })
     runtime.statistics.accounts.mockResolvedValueOnce({ ...accounts, items: [] })
-    runtime.statistics.members.mockResolvedValueOnce({ ...members, total: '0.00', items: [] })
+    runtime.statistics.members.mockResolvedValue({ ...members, total: '0.00', items: [] })
     const page = await loadPage(runtime)
     page.setData({ month: '2024-09' })
 
@@ -324,9 +464,11 @@ describe('statistics page', () => {
     const query = { rangeType: 'ALL' }
     expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
     expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
-    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'ALL')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'EXPENSE')
     expect(runtime.statistics.accounts).toHaveBeenCalledWith(query)
-    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'ALL')
+    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'INCOME')
+    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'EXPENSE')
     expect(page.data.dailyPage).toBe(1)
   })
 
@@ -354,6 +496,10 @@ describe('statistics page', () => {
     expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
     expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
     expect(page.data.appliedRangeLabel).toBe('2024-02-29 至 2024-03-01')
+    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'INCOME')
+    expect(runtime.statistics.members).toHaveBeenCalledWith(query, 'EXPENSE')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'EXPENSE')
   })
 
   it('daily next page only fetches daily rows and keeps full-range summary and rankings', async () => {
@@ -447,7 +593,7 @@ describe('statistics page', () => {
     expect(page.data.loading).toBe(false)
   })
 
-  it('rejects a daily page response after the session revision changes without clearing loading', async () => {
+  it('clears previous identity statistics when the session revision changes during a daily request', async () => {
     const runtime = runtimeFor()
     const page = await loadPage(runtime)
     page.setData({ month: '2024-09' })
@@ -465,7 +611,8 @@ describe('statistics page', () => {
     stalePage.resolve({ ...daily, page: 2, items: [{ ...daily.items[0], date: '2099-03-01' }] })
     await oldPageLoad
 
-    expect(page.data.loading).toBe(true)
-    expect(page.data.daily).toEqual(daily.items)
+    expect(page.data.loading).toBe(false)
+    expect(page.data.daily).toEqual([])
+    expect(page.data.summary).toBeNull()
   })
 })

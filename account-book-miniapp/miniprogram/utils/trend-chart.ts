@@ -1,6 +1,28 @@
 import type { DailyStatisticsItem } from '../types/statistics'
 
 export interface TrendPoint { date: string; x: number; incomeY: number | null; expenseY: number | null }
+export interface TrendSeries {
+  segments: { x: number; y: number; width: number; angle: number }[]
+  dots: { x: number; y: number }[]
+}
+
+export function buildTrendSeries(points: TrendPoint[], key: 'incomeY' | 'expenseY'): TrendSeries {
+  const segments: TrendSeries['segments'] = []
+  const dots: TrendSeries['dots'] = []
+  let previous: { x: number; y: number } | null = null
+  points.forEach(point => {
+    const y = point[key]
+    if (y === null) { previous = null; return }
+    const current = { x: point.x, y }
+    dots.push(current)
+    if (previous) {
+      const dx = current.x - previous.x, dy = current.y - previous.y
+      segments.push({ ...previous, width: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) * 180 / Math.PI })
+    }
+    previous = current
+  })
+  return { segments, dots }
+}
 export interface TrendChart {
   left: number; right: number; top: number; bottom: number; maximum: number
   points: TrendPoint[]

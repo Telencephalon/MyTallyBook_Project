@@ -10,7 +10,7 @@
     <view class="info-item"><text class="identity-meta">当前账本</text><text class="info-value">{{ledgerName}}</text></view>
     <view class="info-item"><text class="identity-meta">币种</text><text class="info-value">{{currency}}</text></view>
     <view class="info-item"><text class="identity-meta">时区</text><text class="info-value">{{timezone}}</text></view>
-    <view class="info-item"><text class="identity-meta">成员上限</text><text class="info-value">{{maxMembers}} 人</text></view>
+    <view class="info-item"><text class="identity-meta">加入方式</text><text class="info-value">邀请加入 · 人数不限</text></view>
   </view>
   <view class="card action-list">
     <button class="row-button" disabled="{{loading || loggingOut || !nickname}}" bindtap="openMembers"><view class="row-label"><image src="/assets/icons/user.png" mode="aspectFit" aria-hidden="true"/><text>共享与成员</text></view><text class="chevron"/></button>

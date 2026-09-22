@@ -14,6 +14,8 @@ import com.mytallybook.accountbook.common.error.BusinessException;
 import com.mytallybook.accountbook.common.error.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -96,11 +98,11 @@ class BootstrapServiceTests {
         order.verify(transactionService).bootstrap(IDENTITY, BOOTSTRAP_KEY, ISSUED, REQUEST_ID);
     }
 
-    @Test
-    void createsExactlyOneOwnerLedgerDefaultsSessionAndSafeAuditEvent() {
+    @ParameterizedTest @ValueSource(ints = {0, 1, 10, 11})
+    void createsExactlyOneOwnerLedgerDefaultsSessionAndSafeAuditEventRegardlessOfLegacyCapacity(int legacyCapacity) {
         BootstrapTransactionService service = transactionService(BOOTSTRAP_KEY);
         when(authStore.lockAppConfig())
-                .thenReturn(new AuthStore.AppConfigState(false, 10, 4));
+                .thenReturn(new AuthStore.AppConfigState(false, legacyCapacity, 4));
         when(authStore.insertUser("owner-openid", "owner-unionid", "微信用户", NOW))
                 .thenReturn(7L);
         when(authStore.insertOwnerMembership(7L, NOW)).thenReturn(11L);
@@ -118,7 +120,7 @@ class BootstrapServiceTests {
         InOrder order = inOrder(authStore, memberStore, auditLogService);
         order.verify(authStore).lockAppConfig();
         order.verify(authStore).insertUser("owner-openid", "owner-unionid", "微信用户", NOW);
-        order.verify(authStore).insertLedger(7L, 10, NOW);
+        order.verify(authStore).insertLedger(7L, NOW);
         order.verify(authStore).insertOwnerMembership(7L, NOW);
         order.verify(authStore).insertDefaultCategories();
         order.verify(authStore).insertDefaultFundAccounts();
@@ -156,14 +158,6 @@ class BootstrapServiceTests {
         verify(authStore, never()).markInitialized(org.mockito.ArgumentMatchers.anyLong(), any());
         verify(authStore, never()).insertSession(org.mockito.ArgumentMatchers.anyLong(), anyString(), any(), any());
         verify(auditLogService, never()).append(any());
-    }
-
-    @Test
-    void rejectsInvalidCapacityBeforeCreatingBootstrapData() {
-        when(authStore.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(false, 0, 4));
-        assertBusinessError(() -> transactionService(BOOTSTRAP_KEY)
-                .bootstrap(IDENTITY, BOOTSTRAP_KEY, ISSUED, REQUEST_ID), ErrorCode.LEDGER_STATE_CONFLICT);
-        verify(authStore, never()).insertUser(anyString(), any(), anyString(), any());
     }
 
     @Test

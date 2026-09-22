@@ -123,16 +123,35 @@ class InviteTransactionServiceTests {
         when(invites.lockByHash("hash")).thenReturn(Optional.of(new InviteStore.InviteRow(51,2,1,NOW,NOW.plusSeconds(60),"ACTIVE",null,null)));
         fails(ErrorCode.INVITE_INVALID,()->service.accept(identity,"hash",session,"req")); noWrites();
     }
-    @Test void lockedCapacityAppliesBeforeAnyInsertOrConsumption() {
-        when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true,1,1));
-        fails(ErrorCode.MEMBER_LIMIT_REACHED,()->service.accept(identity,"hash",session,"req")); noWrites();
+    @ParameterizedTest @ValueSource(ints={0,1,10,11})
+    void eleventhInvitedMemberJoinsRegardlessOfLegacyCapacity(int legacyCapacity) {
+        when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true,legacyCapacity,1));
+        when(members.lockLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1,1,legacyCapacity,"ACTIVE",1)));
+        when(members.lockMembers()).thenReturn(tenActiveMembers());
+        assertThat(tx(()->service.accept(identity,"hash",session,"req")).token()).isEqualTo("dummy-session");
+        verify(members).insertMember(2,NOW);
+        verify(invites).use(51,2,NOW);
+        var event=ArgumentCaptor.forClass(AuditLogService.AuditEvent.class);
+        verify(audit).append(event.capture());
+        assertThat(event.getValue().details().get("activeCount")).isEqualTo(11L);
     }
-    @Test void disabledAndInactiveRelationshipsDoNotOccupyCapacity() {
+    @Test void eleventhCandidateStillNeedsAValidUnusedInvitation() {
+        when(members.lockMembers()).thenReturn(tenActiveMembers());
+        when(invites.lockByHash("hash")).thenReturn(Optional.empty());
+        fails(ErrorCode.INVITE_INVALID,()->service.accept(identity,"hash",session,"req"));
+        when(invites.lockByHash("hash")).thenReturn(Optional.of(row("USED",NOW.plusSeconds(60),1)));
+        fails(ErrorCode.INVITE_USED,()->service.accept(identity,"hash",session,"req"));
+        noWrites();
+    }
+    @Test void disabledAndInactiveRelationshipsAreExcludedFromAuditedActiveCount() {
         when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true,2,1));
         when(members.lockMembers()).thenReturn(List.of(owner,member(13,3,MemberRole.MEMBER,"ACTIVE","DISABLED"),
                 member(14,4,MemberRole.MEMBER,"LEFT","ACTIVE")));
         tx(()->service.accept(identity,"hash",session,"req"));
         verify(invites).use(51,2,NOW);
+        var event=ArgumentCaptor.forClass(AuditLogService.AuditEvent.class);
+        verify(audit).append(event.capture());
+        assertThat(event.getValue().details().get("activeCount")).isEqualTo(2L);
     }
     @Test void expiredCandidateIsRejectedBeforeBusinessWrites() {
         fails(ErrorCode.CONFLICT,()->service.accept(identity,"hash",new IssuedSessionToken("x","h",NOW),"req")); noWrites();
@@ -215,6 +234,12 @@ class InviteTransactionServiceTests {
         verify(auth,never()).revokeAllSessions(anyLong(),any());
         verify(auth,never()).insertSession(anyLong(),anyString(),any(),any());
         verify(invites,never()).use(anyLong(),anyLong(),any()); verifyNoInteractions(audit);
+    }
+    List<MemberStore.MemberState> tenActiveMembers() {
+        var rows=new ArrayList<MemberStore.MemberState>();
+        rows.add(owner);
+        for(long userId=3;userId<=11;userId++) rows.add(member(userId+10,userId,MemberRole.MEMBER,"ACTIVE","ACTIVE"));
+        return rows;
     }
     static class MutableClock extends Clock {
         Instant value=NOW;

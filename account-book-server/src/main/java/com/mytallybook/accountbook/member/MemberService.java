@@ -48,9 +48,7 @@ public class MemberService {
             throw error(ErrorCode.LEDGER_STATE_CONFLICT);
         }
         var ledger = members.readLedger().orElseThrow(() -> error(ErrorCode.LEDGER_STATE_CONFLICT));
-        if (!config.initialized() || config.maxUsers() < 1 || config.maxUsers() > 10
-                || ledger.id() != 1 || !"ACTIVE".equals(ledger.status())
-                || ledger.maxMembers() < 1 || ledger.maxMembers() > 10) {
+        if (!config.initialized() || ledger.id() != 1 || !"ACTIVE".equals(ledger.status())) {
             throw error(ErrorCode.LEDGER_STATE_CONFLICT);
         }
         var rows = members.readMembers();
@@ -60,7 +58,7 @@ public class MemberService {
         var items = rows.stream().filter(MemberService::active)
                 .sorted(Comparator.comparing(MemberState::joinedAt).thenComparingLong(MemberState::memberId))
                 .map(row -> view(row, row.role())).toList();
-        return new MemberList(items, items.size(), snapshot.maxMembers(), safeId(ledger.ownerUserId()));
+        return new MemberList(items, items.size(), null, safeId(ledger.ownerUserId()));
     }
 
     @Transactional

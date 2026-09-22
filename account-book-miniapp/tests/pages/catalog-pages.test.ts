@@ -116,6 +116,60 @@ afterEach(() => {
 })
 
 describe('catalog list pages', () => {
+  it.each(['category-list', 'account-list'] as const)('%s shows one menu at a time and clears it on close, refresh and hide', async name => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    await page.onShow()
+    page.setData({ items: [...page.data.items, { ...page.data.items[0], id: 8 }] })
+    const tap = (id: number) => page.toggleMenu({ currentTarget: { dataset: { id } } })
+    tap(7); expect(page.data.openMenuId).toBe(7)
+    tap(8); expect(page.data.openMenuId).toBe(8)
+    tap(8); expect(page.data.openMenuId).toBe(0)
+    tap(7); page.closeMenu(); expect(page.data.openMenuId).toBe(0)
+    tap(7); await page.onShow(); expect(page.data.openMenuId).toBe(0)
+    tap(7); page.onHide(); expect(page.data.openMenuId).toBe(0)
+  })
+
+  it.each(['category-list', 'account-list'] as const)('%s closes its menu when editing or cancelling deletion', async name => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime, false)
+    const event = { currentTarget: { dataset: { id: 7 } } }
+    await page.onShow()
+    page.toggleMenu(event)
+    page.openEdit(event)
+    expect(page.data.openMenuId).toBe(0)
+    expect(wx.navigateTo).toHaveBeenCalledWith({ url: `/pages/${name.replace('-list', '-edit')}/index?id=7` })
+    page.toggleMenu(event)
+    await page.onDelete(event)
+    expect(wx.showModal).toHaveBeenCalledOnce()
+    expect(page.data.openMenuId).toBe(0)
+    expect(runtime.catalog.deleteCategory).not.toHaveBeenCalled()
+    expect(runtime.catalog.deleteAccount).not.toHaveBeenCalled()
+  })
+
+  it.each(['category-list', 'account-list'] as const)('%s blocks menus and actions while locked or no longer owner', async name => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    await page.onShow()
+    const event = { currentTarget: { dataset: { id: 7 } } }
+    const attempt = async () => {
+      page.toggleMenu(event)
+      page.openEdit(event)
+      await page.onDelete(event)
+    }
+    page.toggleMenu({ currentTarget: { dataset: { id: 999 } } })
+    expect(page.data.openMenuId).toBe(0)
+    page.setData({ loading: true }); await attempt()
+    page.setData({ loading: false, busy: true }); await attempt()
+    page.setData({ busy: false }); page.onHide(); await attempt()
+    await page.onShow()
+    runtime.session.getUser = () => ({ userId: 1, role: 'MEMBER' })
+    await attempt()
+    expect(page.data.openMenuId).toBe(0)
+    expect(wx.navigateTo).not.toHaveBeenCalled()
+    expect(wx.showModal).not.toHaveBeenCalled()
+  })
+
   it('defines the shared safe-area and form control sizing baseline', () => {
     const appWxss = readFileSync(new URL('../../miniprogram/app.wxss', import.meta.url), 'utf8')
     expect(appWxss).toContain('padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));')
@@ -417,10 +471,19 @@ describe('catalog edit pages', () => {
     expect(typeof page.retry).toBe('function')
     const wxml = readFileSync(new URL(`../../miniprogram/pages/${name}/index.wxml`, import.meta.url), 'utf8')
     expect(wxml).toContain('bindtap="retry"')
+    expect(page.data.canManage).toBe(false)
+    expect(page.data.canRetryRead).toBe(true)
+    const retryButton = wxml.match(/<button\b[^>]*\bbindtap="retry"[^>]*>/)?.[0]
+    const disabledExpression = retryButton?.match(/disabled="\{\{([^}]+)\}\}"/)?.[1]
+    expect(disabledExpression).toBeDefined()
+    const retryDisabled = new Function('canManage', 'loading', 'busy', `return ${disabledExpression}`)
+    expect(retryDisabled(page.data.canManage, page.data.loading, page.data.busy)).toBe(false)
 
     await page.retry()
     expect(runtime.flow.refreshContext).toHaveBeenCalledTimes(2)
     expect(runtime.catalog[read]).toHaveBeenCalledTimes(1)
+    expect(page.data.canManage).toBe(true)
+    expect(page.data.canRetryRead).toBe(false)
   })
 
   it.each([

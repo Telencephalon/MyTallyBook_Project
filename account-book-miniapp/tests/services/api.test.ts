@@ -101,7 +101,7 @@ describe('UserApi', () => {
 
 describe('LedgerApi', () => {
   it('gets the authenticated fixed ledger', async () => {
-    const harness = createApiHarness({ id: 1, name: '共享账本' })
+    const harness = createApiHarness({ id: 1, name: '共享账本', maxMembers: null })
 
     await new LedgerApi(harness.http).getFixedLedger()
 

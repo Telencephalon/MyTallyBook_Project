@@ -1,6 +1,7 @@
 import type { ApiEnvironment } from '../config/env'
 import type { ApiErrorResponse, ApiResponse } from '../types/api'
 import { AppError } from '../types/error'
+import { invalidateTabSnapshots } from '../utils/tab-snapshot'
 
 export interface RawResponse {
   statusCode: number
@@ -70,7 +71,9 @@ export class HttpClient {
       header.Authorization = `Bearer ${requestToken}`
     }
 
-    return new Promise<TData>((resolve, reject) => {
+    const mutating = request.method !== 'GET'
+    if (mutating) invalidateTabSnapshots()
+    const response = new Promise<TData>((resolve, reject) => {
       const rawRequest: RawRequestOptions = {
         url: `${this.options.environment.baseUrl}${request.path}`,
         method: request.method,
@@ -100,6 +103,9 @@ export class HttpClient {
         ))
       }
     })
+    // Failed writes can also have reached the server. Invalidate both old reads
+    // and reads started while a write was in flight, even after a timeout.
+    return mutating ? response.finally(invalidateTabSnapshots) : response
   }
 
   private parseResponse<TData>(

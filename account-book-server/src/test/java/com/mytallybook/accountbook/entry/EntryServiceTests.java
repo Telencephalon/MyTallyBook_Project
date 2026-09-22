@@ -11,6 +11,7 @@ import com.mytallybook.accountbook.security.CurrentUser;
 import com.mytallybook.accountbook.security.MemberRole;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
@@ -103,15 +104,18 @@ class EntryServiceTests {
         verify(h.audit, times(1)).append(any());
     }
 
-    @Test
-    void anotherActorCannotClaimAnExistingIdempotencyKey() {
-        var h = harness(MemberRole.MEMBER);
-        when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.of(row(40, "3.40", 99, UUID_A, null, 0)));
-
-        assertCode(ErrorCode.ENTRY_IDEMPOTENCY_CONFLICT,
-                () -> h.service.create(h.actor, request("3.40", UUID_A), "req"));
-        verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
-        verifyNoInteractions(h.audit);
+    @ParameterizedTest
+    @EnumSource(MemberRole.class)
+    void anotherActorCannotClaimExistingKeyOrDiscoverItsDeletionState(MemberRole role) {
+        var h = harness(role);
+        for (boolean deleted : new boolean[]{false, true}) {
+            when(h.store.findByClientRequestId(UUID_A)).thenReturn(Optional.of(row(40, "3.40", 99, UUID_A,
+                    deleted ? Instant.parse("2026-09-01T00:00:00Z") : null, 0)));
+            assertCode(ErrorCode.ENTRY_IDEMPOTENCY_CONFLICT,
+                    () -> h.service.create(h.actor, request("3.40", UUID_A), "req"));
+            verify(h.store, never()).insert(any(), any(), anyLong(), anyLong(), any(), any(), any(), anyLong(), any());
+            verifyNoInteractions(h.audit);
+        }
     }
 
     @Test
@@ -129,7 +133,7 @@ class EntryServiceTests {
     @Test
     void staleUpdateAndDeleteDoNotAudit() {
         var h = harness(MemberRole.ADMIN);
-        var current = row(40, "3.40", 2, UUID_A, null, 3);
+        var current = row(40, "3.40", 1, UUID_A, null, 3);
         when(h.store.find(40)).thenReturn(Optional.of(current));
         when(h.store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(h.store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
@@ -142,9 +146,10 @@ class EntryServiceTests {
         verifyNoInteractions(h.audit);
     }
 
-    @Test
-    void memberMayMutateOwnEntryButNotAnotherMembersEntry() {
-        var h = harness(MemberRole.MEMBER);
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "ADMIN"})
+    void nonOwnerMayMutateOwnEntryButNotAnotherMembersEntry(MemberRole role) {
+        var h = harness(role);
         var own = row(40, "3.40", 1, UUID_A, null, 0);
         var other = row(41, "4.00", 99, "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", null, 0);
         when(h.store.find(40)).thenReturn(Optional.of(own), Optional.of(row(40, "5.00", 1, UUID_A, null, 1)));
@@ -226,7 +231,7 @@ class EntryServiceTests {
     }
 
     @Test
-    void readsUseSnapshotGuardAndExposeRoleDerivedControls() {
+    void readsOutsidePersonalScopeReturnNotFound() {
         var read = mock(LedgerReadGuard.class);
         var write = mock(LedgerWriteGuard.class);
         var store = mock(EntryStore.class);
@@ -235,11 +240,91 @@ class EntryServiceTests {
         when(store.find(40)).thenReturn(Optional.of(row(40, "3.40", 99, UUID_A, null, 0)));
         var service = new EntryService(read, write, store, mock(AuditLogService.class));
 
-        var view = service.get(actor, 40);
-
-        assertFalse(view.canEdit());
-        assertFalse(view.canDelete());
+        assertCode(ErrorCode.RESOURCE_NOT_FOUND, () -> service.get(actor, 40));
         verify(read).requireActor(actor);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "ADMIN"})
+    void personalListAndCountUseLiveCreatorEvenWithStaleOwnerToken(MemberRole role) {
+        var h = harness(role);
+        var staleActor = actor(1, MemberRole.OWNER);
+        when(h.read.requireActor(staleActor)).thenReturn(state(1, role));
+        when(h.store.list(any())).thenAnswer(call -> ((EntryFilters) call.getArgument(0)).createdBy() == null
+                ? List.of(row(40, "3.40", 1, UUID_A, null, 0), row(41, "9.00", 99, UUID_A, null, 0))
+                : List.of(row(40, "3.40", 1, UUID_A, null, 0)));
+        when(h.store.count(any())).thenAnswer(call -> ((EntryFilters) call.getArgument(0)).createdBy() == null ? 2L : 1L);
+        var filters = EntryFilters.parse(null, null, null, null, null, null, null, "2", "10");
+
+        var page = h.service.list(staleActor, filters);
+
+        assertEquals(List.of(1L), page.items().stream().map(EntryModels.EntryView::createdBy).toList());
+        assertEquals(1, page.total());
+        assertEquals(2, page.page());
+        verify(h.store).list(argThat(value -> Long.valueOf(1).equals(value.createdBy()) && value.offset() == 10));
+        verify(h.store).count(argThat(value -> Long.valueOf(1).equals(value.createdBy())));
+        clearInvocations(h.store);
+        assertCode(ErrorCode.ACCESS_DENIED, () -> h.service.list(staleActor,
+                EntryFilters.parse(null, null, null, null, null, "99", null, null, null)));
+        verifyNoInteractions(h.store);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "ADMIN"})
+    void liveNonOwnerCannotReadOrMutateOthersDespiteOwnerToken(MemberRole role) {
+        var h = harness(role);
+        var staleActor = actor(1, MemberRole.OWNER);
+        when(h.read.requireActor(staleActor)).thenReturn(state(1, role));
+        when(h.locked.requireActor(staleActor)).thenReturn(state(1, role));
+        when(h.store.find(41)).thenReturn(Optional.of(row(41, "4.00", 99, UUID_A, null, 0)));
+
+        assertCode(ErrorCode.RESOURCE_NOT_FOUND, () -> h.service.get(staleActor, 41));
+        assertCode(ErrorCode.ACCESS_DENIED, () -> h.service.update(staleActor, 41,
+                new EntryModels.EntryUpdate("EXPENSE", "5.00", 7, 8, "2026-09-06", null, 0L, null, true), "req"));
+        assertCode(ErrorCode.ACCESS_DENIED, () -> h.service.delete(staleActor, 41, 0L, "req"));
+        verify(h.store, never()).update(anyLong(), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong(), any());
+        verify(h.store, never()).softDelete(anyLong(), any(), anyLong(), anyLong());
+        verifyNoInteractions(h.audit);
+    }
+
+    @Test
+    void liveOwnerCanSelectAllOrAnotherCreatorAndReadTheirEntry() {
+        var h = harness(MemberRole.OWNER);
+        var staleActor = actor(1, MemberRole.MEMBER);
+        when(h.read.requireActor(staleActor)).thenReturn(state(1, MemberRole.OWNER));
+        when(h.store.find(41)).thenReturn(Optional.of(row(41, "4.00", 99, UUID_A, null, 0)));
+
+        h.service.list(staleActor, EntryFilters.parse(null, null, null, null, null, null, null, null, null));
+        h.service.list(staleActor, EntryFilters.parse(null, null, null, null, null, "99", null, null, null));
+        assertTrue(h.service.get(staleActor, 41).canEdit());
+        verify(h.store).list(argThat(value -> value.createdBy() == null));
+        verify(h.store).count(argThat(value -> value.createdBy() == null));
+        verify(h.store).list(argThat(value -> Long.valueOf(99).equals(value.createdBy())));
+        verify(h.store).count(argThat(value -> Long.valueOf(99).equals(value.createdBy())));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "ADMIN"})
+    void creatorOptionsNeverDiscloseOtherCurrentOrHistoricalCreators(MemberRole role) {
+        var h = harness(role);
+        when(h.store.creators(any())).thenAnswer(call -> call.getArgument(0) == null
+                ? List.of(new EntryStore.CreatorRow(1, "昵称"), new EntryStore.CreatorRow(99, "历史成员"))
+                : List.of(new EntryStore.CreatorRow(1, "昵称")));
+
+        assertEquals(List.of(1L), h.service.creators(h.actor).items().stream()
+                .map(EntryModels.CreatorOption::userId).toList());
+        verify(h.store).creators(1L);
+    }
+
+    @Test
+    void ownerCreatorOptionsRetainFormerCreators() {
+        var h = harness(MemberRole.OWNER);
+        when(h.store.creators(isNull())).thenReturn(List.of(new EntryStore.CreatorRow(1, "昵称"),
+                new EntryStore.CreatorRow(99, "历史成员")));
+
+        assertEquals(List.of(1L, 99L), h.service.creators(h.actor).items().stream()
+                .map(EntryModels.CreatorOption::userId).toList());
+        verify(h.store).creators(isNull());
     }
 
     private static Harness harness(MemberRole role) {
@@ -251,7 +336,8 @@ class EntryServiceTests {
         var actor = actor(1, role);
         when(write.lock()).thenReturn(locked);
         when(locked.requireActor(actor)).thenReturn(state(1, role));
-        return new Harness(actor, store, audit, new EntryService(read, write, store, audit));
+        when(read.requireActor(actor)).thenReturn(state(1, role));
+        return new Harness(actor, store, audit, new EntryService(read, write, store, audit), read, locked);
     }
 
     private static EntryModels.EntryInput request(String amount, String uuid) {
@@ -278,5 +364,6 @@ class EntryServiceTests {
         assertEquals(code, assertThrows(BusinessException.class, executable).errorCode());
     }
 
-    private record Harness(CurrentUser actor, EntryStore store, AuditLogService audit, EntryService service) {}
+    private record Harness(CurrentUser actor, EntryStore store, AuditLogService audit, EntryService service,
+                           LedgerReadGuard read, LedgerWriteGuard.LockedLedger locked) {}
 }

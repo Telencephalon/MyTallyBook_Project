@@ -5,7 +5,7 @@ import { roleLabel, toErrorView } from '../../utils/presentation'
 Page({
   data: {
     items: [] as (MemberView & { name: string; roleLabel: string })[],
-    activeCount: 0, maxMembers: 0, loading: false, busy: false, canLeave: false,
+    activeCount: 0, maxMembers: null as number | null, loading: false, busy: false, canLeave: false,
     errorMessage: '', requestId: '',
   },
   _alive: true,

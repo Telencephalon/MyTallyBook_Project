@@ -5,6 +5,7 @@ import com.mytallybook.accountbook.audit.AuditLogService;
 import com.mytallybook.accountbook.common.error.BusinessException;
 import com.mytallybook.accountbook.common.error.ErrorCode;
 import com.mytallybook.accountbook.common.validation.BookkeepingValidation;
+import com.mytallybook.accountbook.ledger.DataScope;
 import com.mytallybook.accountbook.ledger.LedgerReadGuard;
 import com.mytallybook.accountbook.ledger.LedgerWriteGuard;
 import com.mytallybook.accountbook.member.store.MemberStore;
@@ -38,17 +39,20 @@ public class AccountService {
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public AccountModels.AccountList list(CurrentUser actor, String status) {
-        readGuard.requireActor(actor);
+        Long creator = DataScope.creator(readGuard.requireActor(actor), null);
         String validatedStatus = status == null || status.isBlank()
                 ? null : BookkeepingValidation.oneOf(status, STATUSES);
-        return new AccountModels.AccountList(store.list(validatedStatus)
+        var rows = creator == null ? store.list(validatedStatus) : store.list(validatedStatus, creator);
+        return new AccountModels.AccountList(rows
                 .stream().map(AccountService::view).toList());
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public AccountModels.AccountView get(CurrentUser actor, long id) {
-        readGuard.requireActor(actor);
-        return view(store.find(BookkeepingValidation.safeId(id))
+        Long creator = DataScope.creator(readGuard.requireActor(actor), null);
+        long accountId = BookkeepingValidation.safeId(id);
+        var row = creator == null ? store.find(accountId) : store.find(accountId, creator);
+        return view(row
                 .orElseThrow(() -> error(ErrorCode.RESOURCE_NOT_FOUND)));
     }
 
@@ -112,7 +116,7 @@ public class AccountService {
     }
 
     private static void requireManager(MemberStore.MemberState actor) {
-        if (actor.role() == MemberRole.MEMBER) throw error(ErrorCode.ACCESS_DENIED);
+        if (actor.role() != MemberRole.OWNER) throw error(ErrorCode.ACCESS_DENIED);
     }
 
     private static AccountModels.AccountView view(AccountStore.AccountRow row) {

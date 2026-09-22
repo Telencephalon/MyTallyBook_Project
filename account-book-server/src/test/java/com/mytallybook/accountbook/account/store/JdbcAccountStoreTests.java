@@ -15,6 +15,25 @@ import static org.mockito.Mockito.when;
 
 class JdbcAccountStoreTests {
     @Test
+    void personalBalanceBindsCreatorInJoinAndOmitsSharedOpeningMoney() {
+        var jdbc = mock(JdbcTemplate.class);
+        var store = new JdbcAccountStore(jdbc);
+        store.list("ACTIVE", 2L);
+        store.list(null, 2L);
+        store.find(7L, 2L);
+        var sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), eq(2L), eq("ACTIVE"));
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), eq(2L));
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), eq(2L), eq(7L));
+        for (String value : sql.getAllValues()) {
+            assertThat(normalize(value))
+                    .contains("0 AS initial_balance")
+                    .contains("COALESCE(SUM(")
+                    .doesNotContain("fa.initial_balance +")
+                    .contains("AND e.deleted_at IS NULL AND e.created_by = ? WHERE fa.ledger_id = 1");
+        }
+    }
+    @Test
     void balanceAndReferenceSqlUseFixedLedgerWithCorrectSoftDeleteRules() {
         var jdbc = mock(JdbcTemplate.class);
         var store = new JdbcAccountStore(jdbc);

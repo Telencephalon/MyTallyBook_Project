@@ -11,6 +11,7 @@ export interface StatisticsPeriodMeta {
 }
 
 export interface StatisticsQuery {
+  createdBy?: number
   month?: string
   rangeType?: StatisticsRangeType
   startDate?: string

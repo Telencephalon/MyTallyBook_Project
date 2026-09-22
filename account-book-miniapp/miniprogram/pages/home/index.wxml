@@ -1,4 +1,6 @@
 <view class="page home-page refined-page tab-page">
+  <view class="home-content">
+
   <view class="hero-card gradient-banner">
     <view class="hero-top"><text>固定共享账本</text><text>随手账</text></view>
     <text class="hero-title">{{ledgerName || '正在加载账本'}}</text>
@@ -14,43 +16,58 @@
   <view class="section">
     <text class="section-title">快捷记账</text>
     <view class="shortcut-grid">
-      <button class="shortcut-card" disabled="{{loading || loggingOut || !displayName}}" bindtap="openFavorEntry" hover-class="shortcut-hover"><image class="shortcut-icon" src="/assets/icons/gift.png" mode="aspectFit" aria-hidden="true"/><view class="shortcut-copy"><text class="shortcut-title">人情记账</text><text class="shortcut-subtitle">礼金 · 往来</text></view></button>
-      <button class="shortcut-card" disabled="{{loading || loggingOut || !displayName}}" bindtap="openLifeEntry" hover-class="shortcut-hover"><image class="shortcut-icon" src="/assets/icons/house.png" mode="aspectFit" aria-hidden="true"/><view class="shortcut-copy"><text class="shortcut-title">生活记账</text><text class="shortcut-subtitle">日常 · 开支</text></view></button>
+      <button class="shortcut-card" disabled="{{loading || loggingOut || !displayName}}" bindtap="openFavorEntry" hover-class="shortcut-hover"><view class="shortcut-symbol favor-symbol"><image class="shortcut-icon" src="/assets/icons/home-gift.png" mode="aspectFit" aria-hidden="true"/></view><view class="shortcut-copy"><text class="shortcut-title">人情记账</text><text class="shortcut-subtitle">礼金 · 往来</text></view></button>
+      <button class="shortcut-card" disabled="{{loading || loggingOut || !displayName}}" bindtap="openLifeEntry" hover-class="shortcut-hover"><view class="shortcut-symbol life-symbol"><image class="shortcut-icon" src="/assets/icons/home-house.png" mode="aspectFit" aria-hidden="true"/></view><view class="shortcut-copy"><text class="shortcut-title">生活记账</text><text class="shortcut-subtitle">日常 · 开支</text></view></button>
     </view>
+  </view>
+
+  <view class="card bookkeeping-card">
+    <view class="bookkeeping-row">
+      <view class="bookkeeping-copy"><text class="section-title">收支记账</text><text class="bookkeeping-description">随时记录每一笔支出与收入</text></view>
+      <button class="button button-primary pill-primary" disabled="{{loading || loggingOut}}" bindtap="openEntryCreate"><text class="add-symbol">＋</text>记一笔</button>
+    </view>
+    <button class="statistics-row" disabled="{{loading || loggingOut}}" bindtap="openStatistics">
+      <view class="statistics-caption"><view class="statistics-symbol"><image src="/assets/icons/home-chart.png" mode="aspectFit" aria-hidden="true"/></view><text class="statistics-title">本月收支概览</text></view>
+      <view class="statistics-link"><text>月度统计</text><text class="chevron"/></view>
+    </button>
   </view>
 
   <view class="section" wx:if="{{displayName}}">
     <view class="section-heading">
       <text class="section-title">最近账单</text>
-      <button class="text-button" bindtap="openEntries">全部明细</button>
+      <button class="text-button" bindtap="openEntries">全部明细 <text class="chevron"/></button>
     </view>
+    <view class="creator-filter" wx:if="{{canSelectCreator}}"><text>创建人：</text><picker range="{{creators}}" range-key="displayName" disabled="{{recentLoading}}" bindchange="onCreator"><view class="creator-chip"><text class="creator-name">{{creatorName}}</text><text class="creator-arrow">▾</text></view></picker></view>
+    <text wx:else class="creator-filter">仅显示我创建的账单</text>
     <view class="error-panel" wx:if="{{recentError}}">
       <text class="error-message">{{recentError}}</text>
       <text class="request-id" wx:if="{{recentRequestId}}" user-select="true">请求编号：{{recentRequestId}}</text>
       <button class="button button-secondary" loading="{{recentLoading}}" disabled="{{recentLoading}}" bindtap="retryRecent">重试</button>
     </view>
     <view class="card recent-list" wx:elif="{{recentEntries.length}}">
-      <view class="recent-row" wx:for="{{recentEntries}}" wx:key="id" data-id="{{item.id}}" bindtap="openEntries">
-        <view class="recent-main"><view class="recent-heading"><text class="recent-name">{{item.entryDate}} · {{item.categoryName}}</text><text class="direction-tag {{item.entryType === 'INCOME' ? 'tag-income' : 'tag-expense'}}">{{item.entryType === 'INCOME' ? '收入' : '支出'}}</text></view><text class="recent-meta">{{item.entryDate}}{{item.personName ? ' · ' + item.personName : ''}}</text></view>
-        <text class="recent-amount {{item.entryType === 'INCOME' ? 'income' : 'expense'}}">{{item.entryType === 'INCOME' ? '+' : '-'}} {{item.amount}}</text>
+      <view class="recent-row" wx:for="{{recentEntries}}" wx:key="id" data-id="{{item.id}}" bindtap="openRecentEntry" hover-class="recent-row-hover">
+        <view class="recent-main">
+          <view class="recent-heading"><text class="recent-name">{{item.entryDate}} · {{item.categoryName}}</text><text class="direction-tag {{item.entryType === 'INCOME' ? 'tag-income' : 'tag-expense'}}">{{item.entryType === 'INCOME' ? '收入' : '支出'}}</text></view>
+          <view class="recent-meta">
+            <text wx:if="{{item.personName}}" class="recent-person {{item.note ? 'with-note' : ''}}">{{item.personName}}</text>
+            <text wx:if="{{item.personName && item.note}}" class="recent-separator"> · </text>
+            <text wx:if="{{item.note}}" class="recent-note">{{item.note}}</text>
+          </view>
+        </view>
+        <text class="recent-amount {{item.entryType === 'INCOME' ? 'income' : 'expense'}} {{item.amount.length > 10 ? 'amount-long' : ''}}">{{item.entryType === 'INCOME' ? '+' : '-'}} {{item.amount}}</text>
       </view>
     </view>
     <view class="card loading-card" wx:else><text>{{recentLoading ? '正在加载最近账单…' : '还没有账单'}}</text></view>
   </view>
 
-  <view class="bookkeeping-row">
-    <text class="section-title">收支记账</text>
-    <button class="button button-primary pill-primary" disabled="{{loading || loggingOut}}" bindtap="openEntryCreate">记一笔</button>
-    <button class="text-button statistics-link" disabled="{{loading || loggingOut}}" bindtap="openStatistics">月度统计 <text class="chevron"/></button>
-  </view>
-
   <view class="section" wx:if="{{canManageCatalog}}">
     <text class="section-title">记账字典</text>
     <view class="card catalog-actions">
-      <button class="catalog-button" disabled="{{loading || loggingOut}}" bindtap="openCategories">分类管理 <text class="chevron"/></button>
-      <button class="catalog-button" disabled="{{loading || loggingOut}}" bindtap="openAccounts">资金账户管理 <text class="chevron"/></button>
+      <button class="catalog-button" disabled="{{loading || loggingOut}}" bindtap="openCategories"><view class="catalog-caption"><view class="catalog-symbol category-symbol"><image src="/assets/icons/home-tags.png" mode="aspectFit" aria-hidden="true"/></view><text>分类管理</text></view><text class="chevron"/></button>
+      <button class="catalog-button" disabled="{{loading || loggingOut}}" bindtap="openAccounts"><view class="catalog-caption"><view class="catalog-symbol account-symbol"><image src="/assets/icons/home-wallet.png" mode="aspectFit" aria-hidden="true"/></view><text>资金账户管理</text></view><text class="chevron"/></button>
     </view>
   </view>
 
-  <button class="home-logout" loading="{{loggingOut}}" disabled="{{loggingOut || loading}}" bindtap="logout">退出登录</button>
+  <button class="home-logout" loading="{{loggingOut}}" disabled="{{loggingOut || loading}}" bindtap="logout"><image src="/assets/icons/home-logout.png" mode="aspectFit" aria-hidden="true"/>退出当前账号</button>
+  </view>
 </view>

@@ -1,20 +1,36 @@
-<view class="page">
-  <view class="toolbar">
-    <picker range="{{['全部状态','启用','停用']}}" bindchange="onStatusFilter"><view>状态：{{status || '全部'}}</view></picker>
-    <button wx:if="{{canManage}}" size="mini" bindtap="openCreate">新增</button>
+<view class="page refined-page catalog-page account-page" bindtap="closeMenu">
+  <text wx:if="{{!canManage && !loading}}" class="catalog-hint">共享资金账户由所有者维护；当前余额仅计算我创建的账单收支。</text>
+  <view class="catalog-toolbar">
+    <picker range="{{['全部状态','启用','停用']}}" value="{{status === 'ACTIVE' ? 1 : status === 'DISABLED' ? 2 : 0}}" disabled="{{loading || busy}}" bindchange="onStatusFilter">
+      <view class="filter-control"><text>状态</text><view class="filter-pill">{{status === 'ACTIVE' ? '启用' : status === 'DISABLED' ? '停用' : '全部'}}<text class="filter-caret"/></view></view>
+    </picker>
+    <button wx:if="{{canManage}}" class="add-button" disabled="{{loading || busy}}" catchtap="openCreate"><text class="add-sign">＋</text>新增账户</button>
   </view>
-  <view wx:if="{{loading}}">加载中…</view>
-  <view class="error-panel" wx:if="{{errorMessage}}">{{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text><button size="mini" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button></view>
-  <view class="empty" wx:if="{{!loading && !errorMessage && items.length === 0}}">暂无账户</view>
-  <view class="card row" wx:for="{{items}}" wx:key="id">
-    <view>
-      <text>{{item.name}} · {{item.accountType}}</text>
-      <text class="muted">初始 {{item.initialBalance}} CNY · 当前 {{item.currentBalance}} CNY</text>
-      <text class="muted">{{item.status}} · 排序 {{item.sortNo}}</text>
-    </view>
-    <view wx:if="{{canManage}}">
-      <button size="mini" data-id="{{item.id}}" bindtap="openEdit">编辑/启停</button>
-      <button size="mini" type="warn" data-id="{{item.id}}" bindtap="onDelete">删除</button>
+  <view wx:if="{{loading}}" class="card empty-state">正在加载账户…</view>
+  <view class="error-panel" wx:if="{{errorMessage}}">
+    <text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
+    <button class="button button-secondary" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button>
+  </view>
+  <view class="card empty-state" wx:if="{{!loading && !errorMessage && items.length === 0}}">暂无账户</view>
+  <view class="catalog-list">
+    <view class="card catalog-card account-card account-{{item.tone}} {{openMenuId === item.id ? 'menu-open' : ''}}" wx:for="{{items}}" wx:key="id">
+      <view class="account-heading">
+        <view class="account-symbol" aria-hidden="true">{{item.symbol}}</view>
+        <view class="account-copy"><text class="catalog-name">{{item.name}}</text><text class="account-type">{{item.typeLabel}}</text></view>
+        <button wx:if="{{canManage}}" class="menu-trigger" disabled="{{loading || busy}}" data-id="{{item.id}}" catchtap="toggleMenu" aria-label="{{item.name}}的更多操作" aria-expanded="{{openMenuId === item.id}}" hover-class="menu-hover">⋮</button>
+      </view>
+      <view class="account-balance">
+        <text class="balance-label">当前余额 <text class="currency">CNY</text></text>
+        <text class="balance-value {{item.negativeBalance ? 'balance-negative' : ''}}">{{item.currentBalance}}</text>
+      </view>
+      <view class="account-footer">
+        <text class="initial-balance">初始余额 {{item.initialBalance}}</text>
+        <view class="account-meta"><text class="status-badge {{item.status === 'ACTIVE' ? 'status-active' : 'status-disabled'}}">{{item.status === 'ACTIVE' ? '启用' : '停用'}}</text><text>排序 {{item.sortNo}}</text></view>
+      </view>
+      <view wx:if="{{canManage && openMenuId === item.id}}" class="action-menu">
+        <button class="menu-action" disabled="{{loading || busy}}" data-id="{{item.id}}" catchtap="openEdit">编辑 / 启停</button>
+        <button class="menu-action menu-danger" disabled="{{loading || busy}}" data-id="{{item.id}}" catchtap="onDelete">删除</button>
+      </view>
     </view>
   </view>
 </view>

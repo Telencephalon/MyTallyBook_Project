@@ -148,7 +148,7 @@ describe('four-tab navigation contract', () => {
       clientRequestId: '11111111-2222-4333-8444-555555555555',
     }
     const runtime = {
-      session: { getRevision: () => 1 },
+      session: { getRevision: () => 1, getUser: () => ({ userId: 1, role: 'OWNER' }) },
       flow: { refreshContext: vi.fn().mockResolvedValue(undefined) },
       entries: {
         detail: vi.fn().mockResolvedValue(entry),

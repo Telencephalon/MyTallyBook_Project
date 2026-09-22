@@ -114,7 +114,7 @@ public class CategoryService {
     }
 
     private static void requireManager(MemberStore.MemberState actor) {
-        if (actor.role() == MemberRole.MEMBER) throw error(ErrorCode.ACCESS_DENIED);
+        if (actor.role() != MemberRole.OWNER) throw error(ErrorCode.ACCESS_DENIED);
     }
 
     private static String optional(String value, Set<String> allowed) {

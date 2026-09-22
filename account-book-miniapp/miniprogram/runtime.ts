@@ -58,7 +58,7 @@ export function getRuntime(): Runtime {
     flow,
     invites: new InviteFlow(new InviteApi(http), flow, () => getWechatCode()),
     members: new MemberFlow(new MemberApi(http), session, flow),
-    catalog: new CatalogFlow(new CatalogApi(http)),
+    catalog: new CatalogFlow(new CatalogApi(http), () => session.getUser()?.role),
     entries: new EntryFlow(new EntryApi(http)),
     statistics: new StatisticsFlow(new StatisticsApi(http)),
   }

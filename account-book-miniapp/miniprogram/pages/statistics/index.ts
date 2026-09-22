@@ -4,9 +4,14 @@ import type { AccountStatisticsItem, DailyStatisticsItem, MonthlySummary, Rankin
 import { shanghaiToday } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
+import type { CreatorOption } from '../../types/entry'
+import { creatorOptions, creatorScopeIdentity } from '../../utils/creator-scope'
+import { canReuseTabSnapshot, captureTabSnapshot, matchesTabSnapshot, type TabSnapshot } from '../../utils/tab-snapshot'
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
 type RankingView = RankingItem & { width: number }
+type Direction = Exclude<RankingDirection, 'ALL'>
+type RankingGroup = { entryType: Direction; label: string; total: string; items: RankingView[] }
 type Scope = 'MONTH' | 'ALL' | 'RANGE'
 
 function currentMonth(): string {
@@ -31,6 +36,20 @@ function cloneQuery(query: string | StatisticsQuery): string | StatisticsQuery {
   return typeof query === 'string' ? query : { ...query }
 }
 
+async function rankingGroups(
+  statistics: ReturnType<typeof getRuntime>['statistics'],
+  dimension: 'categories' | 'members',
+  query: string | StatisticsQuery,
+  direction: RankingDirection,
+): Promise<RankingGroup[]> {
+  const directions: Direction[] = direction === 'ALL' ? ['INCOME', 'EXPENSE'] : [direction]
+  return Promise.all(directions.map(async entryType => {
+    const result = await statistics[dimension](cloneQuery(query), entryType)
+    return { entryType, label: entryType === 'INCOME' ? '收入' : '支出',
+      total: result.total, items: rankingViews(result.items) }
+  }))
+}
+
 function withPage(query: string | StatisticsQuery, page: number): string | StatisticsQuery {
   if (typeof query === 'string') return page === 1 ? query : { month: query, page }
   return { ...query, page }
@@ -48,9 +67,10 @@ Page({
   },
 
   data: {
+    canSelectCreator: false, createdBy: 0, creatorName: '全部成员', creators: [] as CreatorOption[],
     month: currentMonth(),
     scopeIndex: 0,
-    scopeLabels: ['本月', '全部', '自定义'],
+    scopeLabels: ['月度', '全部', '自定义'],
     customStartDate: currentMonth() + '-01',
     customEndDate: shanghaiToday(),
     appliedScope: 'MONTH' as Scope,
@@ -68,11 +88,9 @@ Page({
     directionLabels: ['支出', '收入', '全部'],
     summary: null as MonthlySummary | null,
     daily: [] as DailyStatisticsItem[],
-    categoryTotal: '0.00',
-    categoryItems: [] as RankingView[],
+    categoryGroups: [] as RankingGroup[],
     accountItems: [] as AccountStatisticsItem[],
-    memberTotal: '0.00',
-    memberItems: [] as RankingView[],
+    memberGroups: [] as RankingGroup[],
     loading: false,
     loadState: 'loading' as LoadState,
     errorMessage: '',
@@ -83,12 +101,47 @@ Page({
   _active: true,
   _generation: 0,
   _fullLoadGeneration: 0,
+  _creatorIdentity: '',
+  _snapshot: null as TabSnapshot | null,
+  _displaySnapshot: null as TabSnapshot | null,
+
+  syncCreatorScope() {
+    const session = getRuntime().session
+    const identity = creatorScopeIdentity(session)
+    const changed = this._creatorIdentity !== identity
+    this._creatorIdentity = identity
+    if (changed) { this._snapshot = null; this._displaySnapshot = null }
+    this.setData({ canSelectCreator: session.getUser()?.role === 'OWNER',
+      ...(changed ? { createdBy: 0, creatorName: '全部成员', creators: [], summary: null,
+        daily: [], categoryGroups: [], accountItems: [], memberGroups: [],
+        dailyPage: 1, dailyTotalDays: 0, dailyTotalPages: 0, dailyHasNext: false, loading: false,
+        loadState: 'empty' as LoadState, errorMessage: '', requestId: '' } : {}) })
+    return changed
+  },
+
+  creatorGuard(pageCurrent: () => boolean) {
+    const identity = this._creatorIdentity
+    return () => {
+      if (!this._active) return false
+      if (identity !== creatorScopeIdentity(getRuntime().session)) { this.syncCreatorScope(); return false }
+      return pageCurrent()
+    }
+  },
+
+  async onCreator(event: WechatMiniprogram.PickerChange) {
+    this.syncCreatorScope()
+    if (!this.data.canSelectCreator) return
+    const selected = this.data.creators[Number(event.detail.value)]
+    if (!selected) return
+    this.setData({ createdBy: selected.userId, creatorName: selected.displayName, dailyPage: 1 })
+    await this.loadAll()
+  },
 
   async onShow() {
     this.getTabBar?.()?.setData({ selected: 2 })
 
     this._active = true
-    if (!this._hasExplicitScope && this.data.month === this._defaultMonthAtDefinition) {
+    if (!this._hasExplicitScope && this.data.month === this._defaultMonthAtDefinition && this.data.month !== currentMonth()) {
       const month = currentMonth()
       this.setData({
         month,
@@ -102,7 +155,7 @@ Page({
       })
     }
     this.setData({ loading: false })
-    await this.loadAll()
+    await this.loadAll(true)
   },
 
   onHide() {
@@ -123,11 +176,14 @@ Page({
     this.setData({ dailyDetailsExpanded: !this.data.dailyDetailsExpanded })
   },
 
-  async loadAll() {
+  snapshotQuery(dailyPage?: number): string {
+    return JSON.stringify({ query: this.currentQuery(), dailyPage: dailyPage ?? this.data.dailyPage,
+      dailyPageSize: this.data.dailyPageSize, entryType: this.data.entryType })
+  },
+
+  async loadAll(reuseSnapshot = false) {
     const generation = ++this._generation
     this._fullLoadGeneration = generation
-    const baseQuery = this.currentQuery()
-    const dailyQuery = withPage(baseQuery, this.data.dailyPage)
     let runtime: ReturnType<typeof getRuntime>
     try {
       runtime = getRuntime()
@@ -137,24 +193,44 @@ Page({
       this._fullLoadGeneration = 0
       return
     }
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    const pageCurrent = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    this.syncCreatorScope()
+    let current = pageCurrent
+    const preserveDisplay = reuseSnapshot && matchesTabSnapshot(this._displaySnapshot, runtime.session, this.snapshotQuery())
+    if (!reuseSnapshot) this._snapshot = null
+    if (!preserveDisplay) this._displaySnapshot = null
     this.setData({
-      loading: true, loadState: 'loading', errorMessage: '', requestId: '',
-      summary: null, daily: [], categoryTotal: '0.00', categoryItems: [],
-      accountItems: [], memberTotal: '0.00', memberItems: [],
+      loading: true, errorMessage: '', requestId: '',
+      ...(!preserveDisplay ? { loadState: 'loading' as LoadState,
+        summary: null, daily: [], categoryGroups: [],
+        accountItems: [], memberGroups: [] } : {}),
     })
     try {
-      await runtime.flow.refreshContext()
-      if (!current()) return
-      const [summary, daily, categories, accounts, members] = await Promise.all([
+      if (reuseSnapshot) await runtime.flow.refreshContext({ reusePending: true })
+      else await runtime.flow.refreshContext()
+      if (!current()) { this.syncCreatorScope(); return }
+      this.syncCreatorScope()
+      current = this.creatorGuard(pageCurrent)
+      const query = this.snapshotQuery()
+      if (reuseSnapshot && canReuseTabSnapshot(this._snapshot, runtime.session, query)) return
+      const snapshot = captureTabSnapshot(runtime.session, query)
+      this._snapshot = null
+      this.setData({ loading: true,
+        ...(!matchesTabSnapshot(this._displaySnapshot, runtime.session, query) ? { loadState: 'loading' as LoadState } : {}) })
+      const baseQuery = this.currentQuery()
+      const dailyQuery = withPage(baseQuery, this.data.dailyPage)
+      const [summary, daily, categories, accounts, members, creators] = await Promise.all([
         runtime.statistics.summary(cloneQuery(baseQuery)),
         runtime.statistics.daily(cloneQuery(dailyQuery)),
-        runtime.statistics.categories(cloneQuery(baseQuery), this.data.entryType),
+        rankingGroups(runtime.statistics, 'categories', baseQuery, this.data.entryType),
         runtime.statistics.accounts(cloneQuery(baseQuery)),
-        runtime.statistics.members(cloneQuery(baseQuery), this.data.entryType),
+        rankingGroups(runtime.statistics, 'members', baseQuery, this.data.entryType),
+        this.data.canSelectCreator ? runtime.entries.creators() : Promise.resolve({ items: [] }),
       ])
       if (!current()) return
       this.setData({
+        creators: this.data.canSelectCreator ? creatorOptions(creators.items) : [],
+        creatorName: creators.items.find(item => item.userId === this.data.createdBy)?.displayName || '全部成员',
         month: summary.month ?? this.data.month,
         summary,
         daily: daily.items,
@@ -166,26 +242,26 @@ Page({
         dailyTotalDays: daily.totalDays,
         dailyTotalPages: daily.totalPages,
         dailyHasNext: daily.hasNext,
-        categoryTotal: categories.total,
-        categoryItems: rankingViews(categories.items),
+        categoryGroups: categories,
         accountItems: accounts.items,
-        memberTotal: members.total,
-        memberItems: rankingViews(members.items),
+        memberGroups: members,
         loadState: summary.entryCount === 0 ? 'empty' : 'ready',
         errorMessage: '',
         requestId: '',
       })
+      this._snapshot = snapshot
+      this._displaySnapshot = snapshot
     } catch (error) {
-      if (!current()) return
+      if (!current()) { this.syncCreatorScope(); return }
+      this._snapshot = null
+      this._displaySnapshot = null
       const view = toErrorView(error)
       this.setData({
         summary: null,
         daily: [],
-        categoryTotal: '0.00',
-        categoryItems: [],
+        categoryGroups: [],
         accountItems: [],
-        memberTotal: '0.00',
-        memberItems: [],
+        memberGroups: [],
         loadState: 'error',
         errorMessage: view.message,
         requestId: view.requestId,
@@ -198,7 +274,9 @@ Page({
 
   async loadRankings() {
     const generation = ++this._generation
-    const baseQuery = this.currentQuery()
+    // Partial reads cannot make the untouched summary, accounts or daily data fresh.
+    this._snapshot = null
+    this._displaySnapshot = null
     let runtime: ReturnType<typeof getRuntime>
     try {
       runtime = getRuntime()
@@ -207,28 +285,33 @@ Page({
       this.setData({ loading: false, loadState: 'error', errorMessage: view.message, requestId: view.requestId })
       return
     }
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
-    this.setData({ loading: true, errorMessage: '', requestId: '' })
+    const pageCurrent = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    if (this.syncCreatorScope()) { await this.loadAll(); return }
+    let current = pageCurrent
+    this.setData({ loading: true, categoryGroups: [], memberGroups: [], errorMessage: '', requestId: '' })
     try {
       await runtime.flow.refreshContext()
       if (!current()) return
+      if (this.syncCreatorScope()) { await this.loadAll(); return }
+      current = this.creatorGuard(pageCurrent)
+      const snapshot = captureTabSnapshot(runtime.session, this.snapshotQuery())
+      const baseQuery = this.currentQuery()
       const [categories, members] = await Promise.all([
-        runtime.statistics.categories(cloneQuery(baseQuery), this.data.entryType),
-        runtime.statistics.members(cloneQuery(baseQuery), this.data.entryType),
+        rankingGroups(runtime.statistics, 'categories', baseQuery, this.data.entryType),
+        rankingGroups(runtime.statistics, 'members', baseQuery, this.data.entryType),
       ])
       if (!current()) return
       this.setData({
-        categoryTotal: categories.total,
-        categoryItems: rankingViews(categories.items),
-        memberTotal: members.total,
-        memberItems: rankingViews(members.items),
+        categoryGroups: categories,
+        memberGroups: members,
         loadState: this.data.summary?.entryCount === 0 ? 'empty' : 'ready',
       })
+      this._displaySnapshot = snapshot
     } catch (error) {
       if (!current()) return
       const view = toErrorView(error)
       this.setData({
-        categoryTotal: '0.00', categoryItems: [], memberTotal: '0.00', memberItems: [],
+        categoryGroups: [], memberGroups: [],
         loadState: 'error', errorMessage: view.message, requestId: view.requestId,
       })
     } finally {
@@ -299,8 +382,8 @@ Page({
 
   async loadDailyPage(page: number) {
     const generation = ++this._generation
-    const baseQuery = this.currentQuery()
-    const dailyQuery = withPage(baseQuery, page)
+    this._snapshot = null
+    this._displaySnapshot = null
     let runtime: ReturnType<typeof getRuntime>
     try {
       runtime = getRuntime()
@@ -309,11 +392,17 @@ Page({
       this.setData({ loading: false, loadState: 'error', errorMessage: view.message, requestId: view.requestId })
       return
     }
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    const pageCurrent = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    if (this.syncCreatorScope()) { await this.loadAll(); return }
+    let current = pageCurrent
     this.setData({ loading: true, errorMessage: '', requestId: '' })
     try {
       await runtime.flow.refreshContext()
       if (!current()) return
+      if (this.syncCreatorScope()) { await this.loadAll(); return }
+      current = this.creatorGuard(pageCurrent)
+      const dailyQuery = withPage(this.currentQuery(), page)
+      const snapshot = captureTabSnapshot(runtime.session, this.snapshotQuery(page))
       const daily = await runtime.statistics.daily(cloneQuery(dailyQuery))
       if (!current()) return
       this.setData({
@@ -325,6 +414,7 @@ Page({
         dailyHasNext: daily.hasNext,
         loadState: this.data.summary?.entryCount === 0 ? 'empty' : 'ready',
       })
+      this._displaySnapshot = snapshot
     } catch (error) {
       if (!current()) return
       const view = toErrorView(error)
@@ -343,10 +433,12 @@ Page({
   },
 
   currentQuery(): string | StatisticsQuery {
-    if (this.data.appliedScope === 'ALL') return { rangeType: 'ALL' }
+    const creator = getRuntime().session.getUser()?.role === 'OWNER' && this.data.createdBy
+      ? { createdBy: this.data.createdBy } : {}
+    if (this.data.appliedScope === 'ALL') return { rangeType: 'ALL', ...creator }
     if (this.data.appliedScope === 'RANGE') {
-      return { startDate: this.data.appliedStartDate, endDate: this.data.appliedEndDate }
+      return { startDate: this.data.appliedStartDate, endDate: this.data.appliedEndDate, ...creator }
     }
-    return this.data.month
+    return creator.createdBy ? { month: this.data.month, ...creator } : this.data.month
   },
 })

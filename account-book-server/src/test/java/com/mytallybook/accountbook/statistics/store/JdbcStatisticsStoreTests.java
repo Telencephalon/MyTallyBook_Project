@@ -110,6 +110,46 @@ class JdbcStatisticsStoreTests {
         assertThat(normalize(sql.getAllValues().get(1))).contains("ORDER BY amount DESC,e.created_by ASC");
     }
 
+    @Test
+    void everyAggregationAndExtentBindTheCreatorForMonthCustomAndAllPeriods() {
+        for (var period : java.util.List.of(
+                StatisticsPeriod.parse("2024-09", Clock.systemUTC()).withCreator(99L),
+                StatisticsPeriod.parse(null, null, "2024-09-01", "2024-09-30", Clock.systemUTC()).withCreator(99L),
+                StatisticsPeriod.parse(null, "all", null, null, Clock.systemUTC()).withCreator(99L))) {
+            var jdbc = mock(JdbcTemplate.class);
+            var store = new JdbcStatisticsStore(jdbc);
+
+            store.summary(period);
+            store.daily(period, LocalDate.of(2024, 9, 1), LocalDate.of(2024, 10, 1));
+            store.categories(period, "EXPENSE");
+            store.accounts(period);
+            store.members(period, "INCOME");
+            store.extent(period);
+
+            var sql = ArgumentCaptor.forClass(String.class);
+            var args = ArgumentCaptor.forClass(Object[].class);
+            verify(jdbc, times(6)).query(sql.capture(), any(RowMapper.class), args.capture());
+            for (int i = 0; i < 6; i++) {
+                String statement = normalize(sql.getAllValues().get(i));
+                assertThat(statement).contains("e.created_by=?", "e.deleted_at IS NULL", "e.ledger_id=1")
+                        .doesNotContain("e.created_by=99", "e.person_name=?");
+                var expected = new java.util.ArrayList<Object>();
+                if (period.rangeType() != StatisticsPeriod.RangeType.ALL) {
+                    expected.add(java.sql.Date.valueOf("2024-09-01"));
+                    expected.add(java.sql.Date.valueOf("2024-10-01"));
+                }
+                expected.add(99L);
+                if (i == 1) {
+                    expected.add(java.sql.Date.valueOf("2024-09-01"));
+                    expected.add(java.sql.Date.valueOf("2024-10-01"));
+                }
+                if (i == 2) expected.add("EXPENSE");
+                if (i == 4) expected.add("INCOME");
+                assertThat(args.getAllValues().get(i)).containsExactlyElementsOf(expected);
+            }
+        }
+    }
+
     private static String normalize(String sql) {
         return sql.replaceAll("\\s+", " ").replaceAll("\\s*=\\s*", "=").replaceAll("\\s*,\\s*", ",").trim();
     }

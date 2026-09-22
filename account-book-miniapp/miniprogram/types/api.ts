@@ -39,7 +39,7 @@ export interface Ledger {
   name: string
   currency: string
   timezone: string
-  maxMembers: number
+  maxMembers: number | null
 }
 
 export interface UpdateProfileInput {
@@ -74,6 +74,6 @@ export interface MemberView {
   role: MemberRole
   joinedAt: string
 }
-export interface MemberList { items: MemberView[]; activeCount: number; maxMembers: number; ownerUserId: number }
+export interface MemberList { items: MemberView[]; activeCount: number; maxMembers: number | null; ownerUserId: number }
 export interface RemovedMember { memberId: number; status: 'REMOVED' | 'LEFT' }
 export interface OwnershipTransfer { ownerUserId: number; previousOwnerUserId: number }

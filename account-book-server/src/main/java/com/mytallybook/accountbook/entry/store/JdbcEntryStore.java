@@ -88,7 +88,12 @@ public class JdbcEntryStore implements EntryStore {
 
     @Override
     public List<CreatorRow> creators() {
-        return jdbc().query("""
+        return creators(null);
+    }
+
+    @Override
+    public List<CreatorRow> creators(Long createdBy) {
+        String sql = """
                 SELECT user_id, MAX(display_name) AS display_name
                 FROM (
                     SELECT lm.user_id,
@@ -104,9 +109,10 @@ public class JdbcEntryStore implements EntryStore {
                     LEFT JOIN ledger_member lm ON lm.ledger_id = e.ledger_id AND lm.user_id = e.created_by
                     WHERE e.ledger_id = 1
                 ) creator_options
-                GROUP BY user_id
-                ORDER BY display_name, user_id
-                """, (row, index) -> new CreatorRow(row.getLong("user_id"), row.getString("display_name")));
+                """ + (createdBy == null ? "" : " WHERE user_id = ?")
+                + " GROUP BY user_id ORDER BY display_name, user_id";
+        Object[] arguments = createdBy == null ? new Object[0] : new Object[]{createdBy};
+        return jdbc().query(sql, (row, index) -> new CreatorRow(row.getLong("user_id"), row.getString("display_name")), arguments);
     }
 
     @Override

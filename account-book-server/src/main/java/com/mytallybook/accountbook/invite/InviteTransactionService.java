@@ -62,8 +62,7 @@ public class InviteTransactionService {
         }
         var ledger = members.readLedger()
                 .orElseThrow(() -> new BusinessException(ErrorCode.LEDGER_STATE_CONFLICT));
-        if (!config.initialized() || config.maxUsers() < 1 || config.maxUsers() > 10 || ledger.id() != 1
-                || !"ACTIVE".equals(ledger.status()) || ledger.maxMembers() < 1 || ledger.maxMembers() > 10) {
+        if (!config.initialized() || ledger.id() != 1 || !"ACTIVE".equals(ledger.status())) {
             throw new BusinessException(ErrorCode.LEDGER_STATE_CONFLICT);
         }
         var snapshot = members.readMembers();
@@ -147,9 +146,6 @@ public class InviteTransactionService {
         long active = locked.members().stream()
                 .filter(m -> "ACTIVE".equals(m.status()) && "ACTIVE".equals(m.userStatus()))
                 .count();
-        if (active >= locked.maxMembers()) {
-            throw new BusinessException(ErrorCode.MEMBER_LIMIT_REACHED);
-        }
         requireLive(session);
         long userId = user.isPresent()
                 ? user.get().id()

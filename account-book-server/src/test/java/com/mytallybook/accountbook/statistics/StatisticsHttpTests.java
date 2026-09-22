@@ -7,6 +7,8 @@ import com.mytallybook.accountbook.security.*;
 import com.mytallybook.accountbook.statistics.store.StatisticsStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -133,6 +135,48 @@ class StatisticsHttpTests {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(store);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"monthly-summary", "daily-trend", "categories", "accounts", "members"})
+    void everyEndpointRejectsForgedCreatorUsingLiveRoleDespiteOwnerToken(String endpoint) throws Exception {
+        for (var role : List.of(MemberRole.MEMBER, MemberRole.ADMIN)) {
+            when(members.readLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1, 2, 10, "ACTIVE", 1)));
+            when(members.readMembers()).thenReturn(List.of(
+                    new MemberStore.MemberState(11, 1, "ACTIVE", role, "ACTIVE", "我", null, Instant.EPOCH),
+                    new MemberStore.MemberState(12, 2, "ACTIVE", MemberRole.OWNER, "ACTIVE", "所有者", null, Instant.EPOCH)));
+            clearInvocations(store);
+
+            mvc.perform(get("/api/v1/statistics/" + endpoint + "?range=all&createdBy=2")
+                            .header("Authorization", "Bearer owner"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+            verifyNoInteractions(store);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "1.0", "9007199254740992", "9223372036854775808", "all"})
+    void invalidCreatorCannotSilentlyFallBackToUnrestrictedStatistics(String creator) throws Exception {
+        mvc.perform(get("/api/v1/statistics/monthly-summary?range=all&createdBy=" + creator)
+                        .header("Authorization", "Bearer owner"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(store);
+    }
+
+    @Test
+    void everyEndpointPassesAnOwnerSelectedHistoricalCreatorToAggregationAndExtent() throws Exception {
+        for (String endpoint : List.of("monthly-summary", "daily-trend", "categories", "accounts", "members")) {
+            mvc.perform(get("/api/v1/statistics/" + endpoint + "?range=all&createdBy=99")
+                            .header("Authorization", "Bearer owner"))
+                    .andExpect(status().isOk());
+        }
+        verify(store).summary(argThat(period -> Long.valueOf(99).equals(period.createdBy())));
+        verify(store).daily(argThat(period -> Long.valueOf(99).equals(period.createdBy())), any(), any());
+        verify(store).categories(argThat(period -> Long.valueOf(99).equals(period.createdBy())), any());
+        verify(store).accounts(argThat(period -> Long.valueOf(99).equals(period.createdBy())));
+        verify(store).members(argThat(period -> Long.valueOf(99).equals(period.createdBy())), any());
+        verify(store, times(5)).extent(argThat(period -> Long.valueOf(99).equals(period.createdBy())));
     }
 
     @TestConfiguration(proxyBeanMethods = false)

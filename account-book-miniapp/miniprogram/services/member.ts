@@ -1,6 +1,7 @@
 import type { MemberList, MemberView, OwnershipTransfer, RemovedMember } from '../types/api'
 import { AppError } from '../types/error'
 import type { HttpClient } from './http'
+import { requireMemberLimit } from '../utils/member-limit'
 
 export function requireSafeId(id: number): void {
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -10,8 +11,10 @@ export function requireSafeId(id: number): void {
 
 export class MemberApi {
   constructor(private readonly http: HttpClient) {}
-  list(): Promise<MemberList> {
-    return this.http.request({ method: 'GET', path: '/api/v1/members' })
+  async list(): Promise<MemberList> {
+    const members = await this.http.request<MemberList>({ method: 'GET', path: '/api/v1/members' })
+    requireMemberLimit(members?.maxMembers)
+    return members
   }
   async changeRole(memberId: number, role: 'ADMIN' | 'MEMBER'): Promise<MemberView> {
     requireSafeId(memberId)

@@ -53,15 +53,32 @@ class CategoryServiceTests {
         verify(store, never()).insert(any(),any(),any(),any(),anyInt(),any()); verifyNoInteractions(audit);
     }
 
-    @Test void adminWriteUsesLockedLatestRoleThenAudits() {
+    @Test void ownerWriteUsesLockedLatestRoleThenAudits() {
         var read = mock(LedgerReadGuard.class); var write = mock(LedgerWriteGuard.class);
         var locked = mock(LedgerWriteGuard.LockedLedger.class); var store = mock(CategoryStore.class); var audit = mock(AuditLogService.class);
-        var admin = actor(MemberRole.ADMIN); when(write.lock()).thenReturn(locked); when(locked.requireActor(admin)).thenReturn(state(MemberRole.ADMIN));
+        var admin = actor(MemberRole.ADMIN); when(write.lock()).thenReturn(locked); when(locked.requireActor(admin)).thenReturn(state(MemberRole.OWNER));
         when(store.insert("EXPENSE","餐饮",null,null,0,"ACTIVE")).thenReturn(7L);
         when(store.find(7)).thenReturn(Optional.of(new CategoryStore.CategoryRow(7,"EXPENSE","餐饮",null,null,0,false,"ACTIVE")));
         var result = new CategoryService(read, write, store, audit).create(admin,
                 new CategoryModels.CategoryInput("EXPENSE"," 餐饮 ",null,null,null,null), "req-7");
         assertEquals(7, result.id()); verify(audit).append(any(AuditLogService.AuditEvent.class));
+    }
+
+    @Test void demotedOwnerCannotMutateSharedCategoriesAsAdmin() {
+        var write = mock(LedgerWriteGuard.class);
+        var locked = mock(LedgerWriteGuard.LockedLedger.class);
+        var store = mock(CategoryStore.class);
+        var audit = mock(AuditLogService.class);
+        var staleOwner = actor(MemberRole.OWNER);
+        when(write.lock()).thenReturn(locked);
+        when(locked.requireActor(staleOwner)).thenReturn(state(MemberRole.ADMIN));
+        var service = new CategoryService(mock(LedgerReadGuard.class), write, store, audit);
+        assertThrows(BusinessException.class, () -> service.create(staleOwner,
+                new CategoryModels.CategoryInput("EXPENSE", "餐饮", null, null, 0, "ACTIVE"), "req"));
+        assertThrows(BusinessException.class, () -> service.update(staleOwner, 7,
+                new CategoryModels.CategoryUpdate("EXPENSE", "餐饮", null, null, 0, "ACTIVE"), "req"));
+        assertThrows(BusinessException.class, () -> service.delete(staleOwner, 7, "req"));
+        verifyNoInteractions(store, audit);
     }
 
     @Test void referencedDeleteDoesNotMutateOrAudit() {

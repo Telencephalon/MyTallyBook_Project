@@ -57,6 +57,10 @@ function queryParts(input?: QueryInput, includePage = false): string[] {
     if (!includePage || !Number.isInteger(query.page) || query.page <= 0) invalidRange()
     parts.push(`page=${query.page}`)
   }
+  if (query.createdBy !== undefined) {
+    if (!Number.isSafeInteger(query.createdBy) || query.createdBy <= 0) invalidRange()
+    parts.push(`createdBy=${query.createdBy}`)
+  }
   return parts
 }
 

@@ -135,7 +135,7 @@ class MemberServiceTests {
         var result = service.list(member);
         assertThat(result.items()).extracting(MemberView::memberId).containsExactly(16L, 11L, 12L, 13L);
         assertThat(result.activeCount()).isEqualTo(4);
-        assertThat(result.maxMembers()).isEqualTo(8);
+        assertThat(result.maxMembers()).isNull();
         assertThat(result.ownerUserId()).isEqualTo(1);
         assertThat(result.items().get(2).nickname()).isEqualTo("Name2");
         assertThat(result.items().get(2).displayName()).isEqualTo("Alias2");
@@ -323,16 +323,16 @@ class MemberServiceTests {
         noWrites();
     }
 
-    @ParameterizedTest @ValueSource(ints = {0, 11})
-    void listRejectsInvalidCapacityWithoutTakingWriteLock(int capacity) {
-        doReturn(new AuthStore.AppConfigState(true, capacity, 1)).when(auth).readAppConfig();
-        fails(ErrorCode.LEDGER_STATE_CONFLICT, () -> service.list(owner));
+    @ParameterizedTest @CsvSource({"0, 10", "10, 0", "11, 10", "10, 11", "1, 1"})
+    void listReturnsAllElevenMembersRegardlessOfLegacyCapacity(int legacyMaxUsers, int legacyMaxMembers) {
+        doReturn(new AuthStore.AppConfigState(true, legacyMaxUsers, 1)).when(auth).readAppConfig();
+        ledger = new MemberStore.LedgerState(1, 1, legacyMaxMembers, "ACTIVE", 4);
+        for (long userId = 4; userId <= 11; userId++) rows.add(row(userId, MemberRole.MEMBER));
+        var result = service.list(owner);
+        assertThat(result.activeCount()).isEqualTo(11);
+        assertThat(result.items()).hasSize(11);
+        assertThat(result.maxMembers()).isNull();
         assertThat(operations).isEmpty();
-    }
-
-    @Test void ledgerCapacityCanBeTheEffectiveLowerLimit() {
-        ledger = new MemberStore.LedgerState(1, 1, 4, "ACTIVE", 4);
-        assertThat(service.list(owner).maxMembers()).isEqualTo(4);
     }
 
     @Test void listRejectsUnavailableActorEvenWithPreviouslyValidPrincipal() {

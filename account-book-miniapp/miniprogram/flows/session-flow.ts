@@ -29,6 +29,12 @@ export type LogoutResult = 'CLEARED' | 'ALREADY_HANDLED' | 'SUPERSEDED'
 export class SessionFlow {
   private contextGeneration = 0
   private authenticationGeneration = 0
+  private pendingContext: {
+    token: string | null
+    revision: number
+    generation: number
+    promise: Promise<void>
+  } | null = null
   constructor(
     private readonly session: SessionStore,
     private readonly auth: AuthGateway,
@@ -76,18 +82,31 @@ export class SessionFlow {
     return { destination: 'HOME' }
   }
 
-  async refreshContext(): Promise<void> {
+  async refreshContext(options: { reusePending?: boolean } = {}): Promise<void> {
     const token = this.session.getToken()
     const revision = this.session.getRevision()
+    const pending = this.pendingContext
+    if (options.reusePending && pending && pending.token === token
+      && pending.revision === revision && pending.generation === this.contextGeneration) {
+      return pending.promise
+    }
+
+    // Only an overlapping read may be shared. Completed reads and mutation
+    // refreshes always fetch current permissions and supersede older work.
     const generation = ++this.contextGeneration
-    const [user, ledger] = await Promise.all([
+    const promise = Promise.all([
       this.users.getMe(),
       this.ledgers.getFixedLedger(),
-    ])
-    if (token !== this.session.getToken() || revision !== this.session.getRevision() || generation !== this.contextGeneration) {
-      throw new AppError('INVALID_RESPONSE', 'SESSION_CONTEXT_CHANGED', '登录身份或权限已变化，请刷新页面')
-    }
-    this.session.setContext(user, ledger)
+    ]).then(([user, ledger]) => {
+      if (token !== this.session.getToken() || revision !== this.session.getRevision() || generation !== this.contextGeneration) {
+        throw new AppError('INVALID_RESPONSE', 'SESSION_CONTEXT_CHANGED', '登录身份或权限已变化，请刷新页面')
+      }
+      this.session.setContext(user, ledger)
+    }).finally(() => {
+      if (this.pendingContext?.promise === promise) this.pendingContext = null
+    })
+    this.pendingContext = { token, revision, generation, promise }
+    return promise
   }
 
   async updateNickname(nickname: string, isActive: () => boolean = () => true): Promise<UserProfile> {

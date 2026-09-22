@@ -16,6 +16,7 @@ public interface EntryStore {
     Optional<CategoryReference> findCategory(long id);
     Optional<AccountReference> findAccount(long id);
     List<CreatorRow> creators();
+    List<CreatorRow> creators(Long createdBy);
     long insert(String entryType, BigDecimal amount, long categoryId, long accountId,
                 LocalDate entryDate, String note, String clientRequestId, long actorUserId, String personName);
     int update(long id, String entryType, BigDecimal amount, long categoryId, long accountId,

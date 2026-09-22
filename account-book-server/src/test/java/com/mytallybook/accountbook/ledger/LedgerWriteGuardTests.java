@@ -7,6 +7,8 @@ import com.mytallybook.accountbook.security.CurrentUser;
 import com.mytallybook.accountbook.security.MemberRole;
 import com.mytallybook.accountbook.support.TestTransactions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -43,12 +45,11 @@ class LedgerWriteGuardTests {
         verifyNoInteractions(members);
     }
 
-    @Test void locksInOrderAndUsesFreshActorRoleAndTheLowestCapacity() {
+    @Test void locksInOrderAndUsesFreshActorRole() {
         when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true, 6, 1));
         when(members.lockLedger()).thenReturn(Optional.of(ledger));
         when(members.lockMembers()).thenReturn(List.of(member(11, 7, MemberRole.OWNER, "ACTIVE"), member(12, 8, MemberRole.MEMBER, "ACTIVE")));
         var locked = TestTransactions.template().execute(status -> guard.lock());
-        assertThat(locked.maxMembers()).isEqualTo(6);
         assertThat(locked.requireActor(new CurrentUser(8, 1, 12, MemberRole.ADMIN)).role()).isEqualTo(MemberRole.MEMBER);
         var order = inOrder(auth, members);
         order.verify(auth).lockAppConfig();
@@ -71,11 +72,9 @@ class LedgerWriteGuardTests {
         assertThatCode(() -> guard.assertOwnerInvariant(ledger, List.of(member(11, 7, MemberRole.OWNER, "ACTIVE")))).doesNotThrowAnyException();
     }
 
-    @Test void rejectsUninitializedInvalidCapacityMissingAndInactiveLedger() {
+    @Test void rejectsUninitializedMissingAndInactiveLedger() {
         when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(false, 10, 1));
         assertLockError("SYSTEM_NOT_INITIALIZED");
-        when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true, 0, 1));
-        assertLockError("LEDGER_STATE_CONFLICT");
         when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true, 10, 1));
         when(members.lockLedger()).thenReturn(Optional.empty());
         assertLockError("LEDGER_STATE_CONFLICT");
@@ -88,18 +87,22 @@ class LedgerWriteGuardTests {
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.errorCode().name()).isEqualTo(code));
     }
 
-    @Test void rejectsOutOfRangeConfigurationBeforeAuthorizingWrites() {
-        when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true, 11, 1));
+    @ParameterizedTest @ValueSource(ints = {0, 1, 10, 11})
+    void legacyConfigurationCapacityDoesNotBlockAuthorizedWrites(int legacyCapacity) {
+        when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true, legacyCapacity, 1));
         when(members.lockLedger()).thenReturn(Optional.of(ledger));
         when(members.lockMembers()).thenReturn(List.of(member(11, 7, MemberRole.OWNER, "ACTIVE")));
-        assertLockError("LEDGER_STATE_CONFLICT");
+        var locked = TestTransactions.template().execute(status -> guard.lock());
+        assertThat(locked.requireActor(new CurrentUser(7, 1, 11, MemberRole.OWNER)).role()).isEqualTo(MemberRole.OWNER);
     }
 
-    @Test void rejectsOutOfRangeLedgerCapacityBeforeAuthorizingWrites() {
+    @ParameterizedTest @ValueSource(ints = {0, 1, 10, 11})
+    void legacyLedgerCapacityDoesNotBlockAuthorizedWrites(int legacyCapacity) {
         when(auth.lockAppConfig()).thenReturn(new AuthStore.AppConfigState(true, 10, 1));
-        when(members.lockLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1, 7, 11, "ACTIVE", 1)));
+        when(members.lockLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1, 7, legacyCapacity, "ACTIVE", 1)));
         when(members.lockMembers()).thenReturn(List.of(member(11, 7, MemberRole.OWNER, "ACTIVE")));
-        assertLockError("LEDGER_STATE_CONFLICT");
+        var locked = TestTransactions.template().execute(status -> guard.lock());
+        assertThat(locked.requireActor(new CurrentUser(7, 1, 11, MemberRole.OWNER)).role()).isEqualTo(MemberRole.OWNER);
     }
 
     @Test void removedAndDisabledActorsCannotUseStaleIdentity() {

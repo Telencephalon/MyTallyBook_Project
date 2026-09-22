@@ -4,6 +4,7 @@ import type { Entry } from '../../types/entry'
 import { entryDraft, validEntryId } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
+import { creatorScopeIdentity } from '../../utils/creator-scope'
 
 interface Choice { id: number; name: string; status: ResourceStatus; original?: boolean }
 
@@ -22,6 +23,18 @@ Page({
   _active: true, _generation: 0, _writeOperation: 0, _dirty: false, _loadedId: 0, _loadedRevision: -1,
   _allCategories: null as Category[] | null,
   _categoryRevision: -1,
+  _scopeIdentity: '',
+  syncScope() {
+    const identity = creatorScopeIdentity(getRuntime().session)
+    if (identity !== this._scopeIdentity) {
+      this._scopeIdentity = identity
+      this._dirty = false; this._loadedId = 0; this._loadedRevision = -1
+      this._allCategories = null; this._categoryRevision = -1
+      this.setData({ entryType: 'EXPENSE', amount: '', categoryId: 0, accountId: 0, selectedCategoryName: '', selectedAccountName: '',
+        entryDate: '', note: '', personName: '', version: 0, categoryOptions: [], accountOptions: [],
+        canEdit: false, canReload: false, canRetryRead: false, loading: false, errorMessage: '', requestId: '' })
+    }
+  },
   onLoad(query: Record<string, string>) {
     try { this.setData({ id: validEntryId(query.id) }) }
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message }) }
@@ -41,13 +54,24 @@ Page({
       this.setData({ loading: false, errorMessage: view.message, requestId: view.requestId })
       return
     }
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    const guard = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    this.syncScope()
+    let identity = ''
+    const current = () => {
+      if (!this._active || generation !== this._generation) return false
+      if (identity && identity !== creatorScopeIdentity(runtime.session)) { this.syncScope(); return false }
+      if (!guard()) { this.syncScope(); return false }
+      return true
+    }
     const preserveConflict = !force && this._dirty && this.data.canReload
     this.setData(preserveConflict
       ? { loading: true }
       : { loading: true, errorMessage: '', requestId: '', canRetryRead: false })
     try {
       await runtime.flow.refreshContext(); if (!current()) return
+      this.syncScope()
+      identity = this._scopeIdentity
+      this.setData({ loading: true })
       const revision = runtime.session.getRevision()
       if (!force && this._dirty && this._loadedId === this.data.id && this._loadedRevision === revision) return
       this._allCategories = null
@@ -85,6 +109,7 @@ Page({
   },
 
   formLocked() {
+    if (this._scopeIdentity && this._scopeIdentity !== creatorScopeIdentity(getRuntime().session)) this.syncScope()
     return !this.data.canEdit || this.data.loading || this.data.busy
       || this.data.canReload || this.data.canRetryRead
   },
@@ -148,7 +173,13 @@ Page({
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message, requestId: view.requestId }); return }
     const runtime = getRuntime(); const generation = this._generation
     const operation = ++this._writeOperation
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    const guard = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    const identity = this._scopeIdentity
+    const current = () => {
+      if (!this._active) return false
+      if (identity !== creatorScopeIdentity(runtime.session)) { this.syncScope(); return false }
+      return guard()
+    }
     this.setData({ busy: true, errorMessage: '', requestId: '', canRetryRead: false })
     try {
       const saved = await runtime.entries.update(this.data.id, body)

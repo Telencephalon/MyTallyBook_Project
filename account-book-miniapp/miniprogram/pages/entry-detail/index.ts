@@ -4,11 +4,21 @@ import { validEntryId } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
 import { navigateToPage } from '../../utils/navigation'
+import { creatorScopeIdentity } from '../../utils/creator-scope'
 
 Page({
   data: { id: 0, entry: null as Entry | null, canEdit: false, canDelete: false,
     loading: false, busy: false, canRetry: false, errorMessage: '', requestId: '' },
   _active: true, _generation: 0, _writeOperation: 0,
+  _scopeIdentity: '',
+  syncScope() {
+    const identity = creatorScopeIdentity(getRuntime().session)
+    if (identity !== this._scopeIdentity) {
+      this._scopeIdentity = identity
+      this.setData({ entry: null, canEdit: false, canDelete: false, loading: false, canRetry: false,
+        errorMessage: '', requestId: '' })
+    }
+  },
   onLoad(query: Record<string, string>) {
     try { this.setData({ id: validEntryId(query.id) }) }
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message }) }
@@ -26,10 +36,21 @@ Page({
       this.setData({ loading: false, errorMessage: view.message, requestId: view.requestId })
       return
     }
-    const current = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    const guard = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
+    this.syncScope()
+    let identity = ''
+    const current = () => {
+      if (!this._active || generation !== this._generation) return false
+      if (identity && identity !== creatorScopeIdentity(runtime.session)) { this.syncScope(); return false }
+      if (!guard()) { this.syncScope(); return false }
+      return true
+    }
     this.setData({ loading: true, errorMessage: '', requestId: '', canRetry: false })
     try {
       await runtime.flow.refreshContext(); if (!current()) return
+      this.syncScope()
+      identity = this._scopeIdentity
+      this.setData({ loading: true })
       const entry = await runtime.entries.detail(this.data.id)
       if (current()) this.setData({ entry, canEdit: entry.canEdit, canDelete: entry.canDelete, canRetry: false })
     } catch (error) {
@@ -42,14 +63,20 @@ Page({
   },
   onHide() { this._active = false; ++this._generation; this.setData({ loading: false }) },
   onUnload() { this._active = false; ++this._generation; this.setData({ loading: false }) },
-  openEdit() { if (this.data.canEdit && !this.data.busy) wx.navigateTo({ url: `/pages/entry-edit/index?id=${this.data.id}` }) },
+  openEdit() { this.syncScope(); if (this.data.canEdit && !this.data.busy) wx.navigateTo({ url: `/pages/entry-edit/index?id=${this.data.id}` }) },
   async onRetry() { if (!this.data.canRetry || this.data.loading || this.data.busy) return; await this.onShow() },
   async onDelete() {
+    this.syncScope()
     const item = this.data.entry
     if (!item || !this.data.canDelete || this.data.busy) return
     const runtime = getRuntime(); const generation = this._generation; const operation = ++this._writeOperation
     const pageCurrent = pageGuard(runtime.session, generation, () => this._active, () => this._generation)
-    const current = () => pageCurrent()
+    const identity = this._scopeIdentity
+    const current = () => {
+      if (!this._active) return false
+      if (identity !== creatorScopeIdentity(runtime.session)) { this.syncScope(); return false }
+      return pageCurrent()
+    }
     this.setData({ busy: true })
     try {
       const confirmed = await new Promise<boolean>(resolve => wx.showModal({

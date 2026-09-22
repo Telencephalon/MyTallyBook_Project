@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTrendChart } from '../../miniprogram/utils/trend-chart'
+import { buildTrendChart, buildTrendSeries } from '../../miniprogram/utils/trend-chart'
 
 const day = (date: string, income: string, expense = '0.00') => ({ date, income, expense, net: '0.00', entryCount: 1 })
 
@@ -42,5 +42,29 @@ describe('daily trend chart projection', () => {
     const chart = buildTrendChart([day('2026-09-22','invalid','12')],320,200)
     expect(chart.points[0].incomeY).toBeNull()
     expect(chart.points[0].expenseY).not.toBeNull()
+  })
+})
+
+describe('ordinary-view trend series', () => {
+  it('projects a rising line with the correct length and rotation', () => {
+    const series = buildTrendSeries([
+      { date: '2026-09-01', x: 10, incomeY: 50, expenseY: 0 },
+      { date: '2026-09-02', x: 40, incomeY: 10, expenseY: 0 },
+    ], 'incomeY')
+    expect(series.segments).toHaveLength(1)
+    expect(series.segments[0]).toMatchObject({ x: 10, y: 50, width: 50 })
+    expect(series.segments[0].angle).toBeCloseTo(-53.1301, 3)
+    expect(series.dots).toEqual([{ x: 10, y: 50 }, { x: 40, y: 10 }])
+  })
+
+  it('breaks at missing amounts and preserves the zero baseline', () => {
+    const series = buildTrendSeries([
+      { date: '2026-09-01', x: 10, incomeY: 10, expenseY: 100 },
+      { date: '2026-09-02', x: 20, incomeY: 20, expenseY: null },
+      { date: '2026-09-03', x: 30, incomeY: 30, expenseY: 100 },
+      { date: '2026-09-04', x: 40, incomeY: 40, expenseY: 100 },
+    ], 'expenseY')
+    expect(series.segments).toEqual([{ x: 30, y: 100, width: 10, angle: 0 }])
+    expect(series.dots).toHaveLength(3)
   })
 })

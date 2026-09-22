@@ -17,7 +17,7 @@ Page({
     nickname: '',
     roleLabel: '',
     ledgerName: '',
-    currency: '', timezone: '', maxMembers: 0,
+    currency: '', timezone: '', maxMembers: null as number | null,
     version: APP_INFO.version,
     canManageInvites: false,
     errorMessage: '',
@@ -30,7 +30,7 @@ Page({
     this._active = true
     ++this._generation
     this.setData({ loading: false })
-    if (!this.data.loggingOut) await this.loadContext()
+    if (!this.data.loggingOut) await this.loadContext(true)
   },
 
   onHide() {
@@ -43,7 +43,7 @@ Page({
     ++this._generation
   },
 
-  async loadContext() {
+  async loadContext(tabReturn = false) {
     if (!this._active || this.data.loading) return
 
     const runtime = getRuntime()
@@ -53,7 +53,7 @@ Page({
       && revision === runtime.session.getRevision()
     this.setData({ loading: true, errorMessage: '', requestId: '' })
     try {
-      await runtime.flow.refreshContext()
+      await runtime.flow.refreshContext(tabReturn ? { reusePending: true } : undefined)
       if (!isCurrent()) return
       this.showContext(runtime.session.getUser(), runtime.session.getLedger())
     } catch (error) {
@@ -73,7 +73,7 @@ Page({
       ledgerName: ledger?.name ?? '',
       currency: ledger?.currency ?? '',
       timezone: ledger?.timezone ?? '',
-      maxMembers: ledger?.maxMembers ?? 0,
+      maxMembers: ledger?.maxMembers ?? null,
       canManageInvites: user?.role === 'OWNER' || user?.role === 'ADMIN',
       ...(clearError ? { errorMessage: '', requestId: '' } : {}),
     })

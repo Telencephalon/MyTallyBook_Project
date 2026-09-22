@@ -6,17 +6,20 @@ import com.mytallybook.accountbook.member.store.MemberStore;
 import com.mytallybook.accountbook.security.CurrentUser;
 import com.mytallybook.accountbook.security.MemberRole;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import java.time.Instant;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class LedgerReadGuardTests {
-    @Test void activeActorIsResolvedFromLatestConsistentSnapshot() {
+    @ParameterizedTest @CsvSource({"0, 10", "10, 0", "11, 10", "10, 11", "1, 1"})
+    void activeActorIsResolvedRegardlessOfLegacyCapacity(int legacyMaxUsers, int legacyMaxMembers) {
         var auth = mock(AuthStore.class); var members = mock(MemberStore.class);
         var owner = row(11, 1, MemberRole.OWNER); var actor = row(12, 2, MemberRole.MEMBER);
-        when(auth.readAppConfig()).thenReturn(new AuthStore.AppConfigState(true, 10, 1));
-        when(members.readLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1, 1, 10, "ACTIVE", 1)));
+        when(auth.readAppConfig()).thenReturn(new AuthStore.AppConfigState(true, legacyMaxUsers, 1));
+        when(members.readLedger()).thenReturn(Optional.of(new MemberStore.LedgerState(1, 1, legacyMaxMembers, "ACTIVE", 1)));
         when(members.readMembers()).thenReturn(List.of(owner, actor));
         assertEquals(actor, new LedgerReadGuard(auth, members, new LedgerWriteGuard(auth, members))
                 .requireActor(new CurrentUser(2, 1, 12, MemberRole.ADMIN)));

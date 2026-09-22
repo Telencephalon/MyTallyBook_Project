@@ -2,7 +2,7 @@
   <view class="brand-block">
     <view class="brand-mark">账</view>
     <text class="brand-title">随手账</text>
-    <text class="brand-subtitle">10 人以内的固定共享账本</text>
+    <text class="brand-subtitle">受邀加入，成员人数不限</text>
   </view>
 
   <view class="card status-card" wx:if="{{viewState === 'RESTORING'}}">

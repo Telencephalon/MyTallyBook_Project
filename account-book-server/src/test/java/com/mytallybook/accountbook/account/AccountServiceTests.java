@@ -15,6 +15,22 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AccountServiceTests {
+    @Test void demotedOwnerCannotMutateSharedAccountsAsAdmin() {
+        var write = mock(LedgerWriteGuard.class);
+        var locked = mock(LedgerWriteGuard.LockedLedger.class);
+        var store = mock(AccountStore.class);
+        var audit = mock(AuditLogService.class);
+        var staleOwner = actor(MemberRole.OWNER);
+        when(write.lock()).thenReturn(locked);
+        when(locked.requireActor(staleOwner)).thenReturn(state(MemberRole.ADMIN));
+        var service = new AccountService(mock(LedgerReadGuard.class), write, store, audit);
+        assertThrows(BusinessException.class, () -> service.create(staleOwner,
+                new AccountModels.AccountInput("现金", "CASH", "0.00", 0, "ACTIVE"), "req"));
+        assertThrows(BusinessException.class, () -> service.update(staleOwner, 7,
+                new AccountModels.AccountUpdate("现金", 0, "ACTIVE", 2L), "req"));
+        assertThrows(BusinessException.class, () -> service.delete(staleOwner, 7, 2L, "req"));
+        verifyNoInteractions(store, audit);
+    }
     @Test void currentBalanceIsReturnedExactlyAndMembersCannotCreate() {
         var read = mock(LedgerReadGuard.class);
         var write = mock(LedgerWriteGuard.class);
@@ -25,14 +41,44 @@ class AccountServiceTests {
         when(read.requireActor(member)).thenReturn(state(MemberRole.MEMBER));
         when(write.lock()).thenReturn(locked);
         when(locked.requireActor(member)).thenReturn(state(MemberRole.MEMBER));
-        when(store.list(null)).thenReturn(List.of(new AccountStore.AccountRow(
-                7, "现金", "CASH", new BigDecimal("0.10"), new BigDecimal("0.30"), 0, "ACTIVE", 2)));
+        when(store.list(null, 2L)).thenReturn(List.of(new AccountStore.AccountRow(
+                7, "现金", "CASH", BigDecimal.ZERO, new BigDecimal("0.30"), 0, "ACTIVE", 2)));
         var service = new AccountService(read, write, store, audit);
         assertEquals("0.30", service.list(member, null).items().getFirst().currentBalance());
         assertThrows(BusinessException.class, () -> service.create(member,
                 new AccountModels.AccountInput("现金", "CASH", "-1.25", 0, "ACTIVE"), "req"));
         verify(store, never()).insert(any(), any(), any(), anyInt(), any());
         verifyNoInteractions(audit);
+    }
+
+    @Test void latestMemberRoleScopesBothBalanceReadsAndOwnerKeepsSharedOpeningBalance() {
+        for (var role : MemberRole.values()) {
+            var read = mock(LedgerReadGuard.class);
+            var store = mock(AccountStore.class);
+            var staleToken = actor(MemberRole.OWNER);
+            when(read.requireActor(staleToken)).thenReturn(state(role));
+            boolean owner = role == MemberRole.OWNER;
+            var row = new AccountStore.AccountRow(7, "现金", "CASH",
+                    owner ? new BigDecimal("100.00") : BigDecimal.ZERO,
+                    new BigDecimal(owner ? "130.00" : "10.00"), 0, "ACTIVE", 2);
+            if (owner) {
+                when(store.list("ACTIVE")).thenReturn(List.of(row));
+                when(store.find(7)).thenReturn(Optional.of(row));
+            } else {
+                when(store.list("ACTIVE", 2L)).thenReturn(List.of(row));
+                when(store.find(7, 2L)).thenReturn(Optional.of(row));
+            }
+            var service = new AccountService(read, mock(LedgerWriteGuard.class), store, mock(AuditLogService.class));
+            var list = service.list(staleToken, "ACTIVE").items();
+            var detail = service.get(staleToken, 7);
+            assertEquals(owner ? "130.00" : "10.00", list.getFirst().currentBalance());
+            assertEquals(owner ? "100.00" : "0.00", detail.initialBalance());
+            assertEquals(list.getFirst(), detail);
+            if (!owner) {
+                verify(store, never()).list(any());
+                verify(store, never()).find(anyLong());
+            }
+        }
     }
 
     @Test void staleUpdateDoesNotAudit() {

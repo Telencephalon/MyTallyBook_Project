@@ -25,8 +25,9 @@ public class StatisticsController {
             @RequestParam(required = false) String range,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String createdBy,
             HttpServletRequest request) {
-        return ApiResponse.success(service.summary(actor, month, range, startDate, endDate),
+        return ApiResponse.success(service.summary(actor, month, range, startDate, endDate, createdBy),
                 RequestIdFilter.getRequestId(request));
     }
 
@@ -37,8 +38,9 @@ public class StatisticsController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String page,
+            @RequestParam(required = false) String createdBy,
             HttpServletRequest request) {
-        return ApiResponse.success(service.daily(actor, month, range, startDate, endDate, page),
+        return ApiResponse.success(service.daily(actor, month, range, startDate, endDate, page, createdBy),
                 RequestIdFilter.getRequestId(request));
     }
 
@@ -48,8 +50,9 @@ public class StatisticsController {
             @RequestParam(required = false) String range,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String entryType, HttpServletRequest request) {
-        return ApiResponse.success(service.categories(actor, month, range, startDate, endDate, entryType),
+            @RequestParam(required = false) String entryType,
+            @RequestParam(required = false) String createdBy, HttpServletRequest request) {
+        return ApiResponse.success(service.categories(actor, month, range, startDate, endDate, entryType, createdBy),
                 RequestIdFilter.getRequestId(request));
     }
 
@@ -59,8 +62,9 @@ public class StatisticsController {
             @RequestParam(required = false) String range,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String createdBy,
             HttpServletRequest request) {
-        return ApiResponse.success(service.accounts(actor, month, range, startDate, endDate),
+        return ApiResponse.success(service.accounts(actor, month, range, startDate, endDate, createdBy),
                 RequestIdFilter.getRequestId(request));
     }
 
@@ -70,8 +74,9 @@ public class StatisticsController {
             @RequestParam(required = false) String range,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String entryType, HttpServletRequest request) {
-        return ApiResponse.success(service.members(actor, month, range, startDate, endDate, entryType),
+            @RequestParam(required = false) String entryType,
+            @RequestParam(required = false) String createdBy, HttpServletRequest request) {
+        return ApiResponse.success(service.members(actor, month, range, startDate, endDate, entryType, createdBy),
                 RequestIdFilter.getRequestId(request));
     }
 }

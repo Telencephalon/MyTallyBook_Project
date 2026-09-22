@@ -11,7 +11,7 @@
 
   <view class="card section">
     <text class="section-title">共享账本与记账数据</text>
-    <text class="paragraph">我们处理共享账本信息、成员身份、角色与名额，以及收入、支出等记账记录、分类和资金账户，用于成员共同查看和维护账本。</text>
+    <text class="paragraph">我们处理共享账本信息、成员身份与角色，以及收入、支出等记账记录、分类和资金账户，普通成员和管理员仅能查看、维护自己创建的账单；所有者可查看全部或指定成员的账单。分类和资金账户共享，由所有者维护。</text>
   </view>
 
   <view class="card section">
@@ -21,7 +21,7 @@
 
   <view class="card section">
     <text class="section-title">退出与数据保留</text>
-    <text class="paragraph">退出登录会结束当前设备上的会话，但不会删除共享账本或历史记录。账本及历史仍由有权限的成员共同使用。</text>
+    <text class="paragraph">退出登录会结束当前设备上的会话，但不会删除共享账本或历史记录。历史记录按成员权限继续保留，所有者仍可查看已退出成员创建的账单。</text>
   </view>
 
   <view class="card section">

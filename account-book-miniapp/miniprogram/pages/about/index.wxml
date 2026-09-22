@@ -3,6 +3,8 @@
     <view class="brand-mark">账</view>
     <text class="brand-title">{{appName}}</text>
     <text class="muted">版本 {{version}}</text>
+    <text class="muted">邀请加入 · 成员人数不限</text>
+    <text class="muted">成员记自己的账，所有者可查看全部账单。</text>
   </view>
 
   <view class="card detail-list">

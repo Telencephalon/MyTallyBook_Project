@@ -135,6 +135,10 @@ public class JdbcStatisticsStore implements StatisticsStore {
                 arguments.add(Date.valueOf(period.endExclusive()));
             }
         }
+        if (period.createdBy() != null) {
+            sql.append(" AND e.created_by=?");
+            arguments.add(period.createdBy());
+        }
         return new Query(sql.toString(), arguments);
     }
 

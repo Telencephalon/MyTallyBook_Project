@@ -84,8 +84,12 @@ class CategoryHttpTests {
     }
 
     @Test
-    void memberWriteDeniedAndPutPatchShareEditableContract() throws Exception {
+    void onlyOwnerWritesAndPutPatchShareEditableContract() throws Exception {
         mvc.perform(post("/api/v1/categories").header("Authorization", "Bearer member")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"entryType\":\"EXPENSE\",\"name\":\"餐饮\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/categories").header("Authorization", "Bearer admin")
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content("{\"entryType\":\"EXPENSE\",\"name\":\"餐饮\"}"))
                 .andExpect(status().isForbidden());
@@ -93,7 +97,7 @@ class CategoryHttpTests {
                 7, "EXPENSE", "新名", null, null, 0, false, "ACTIVE")));
         when(store.update(eq(7L), anyString(), anyString(), any(), any(), anyInt(), any())).thenReturn(1);
         for (HttpMethod method : List.of(HttpMethod.PUT, HttpMethod.PATCH)) {
-            mvc.perform(request(method, "/api/v1/categories/7").header("Authorization", "Bearer admin")
+            mvc.perform(request(method, "/api/v1/categories/7").header("Authorization", "Bearer owner")
                             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                             .content("{\"entryType\":\"EXPENSE\",\"name\":\"新名\",\"icon\":null,\"color\":null,\"sortNo\":0,\"status\":\"ACTIVE\"}"))
                     .andExpect(status().isOk())

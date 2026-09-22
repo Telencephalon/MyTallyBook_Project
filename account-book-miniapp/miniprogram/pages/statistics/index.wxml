@@ -1,6 +1,11 @@
 <view class="page refined-page statistics-page tab-page">
   <view class="gradient-banner statistics-banner"><text class="banner-title">收支统计</text><text class="banner-subtitle">{{appliedRangeLabel}} · 看清每一笔收支</text></view>
   <view class="filter-card card">
+    <view class="filter-item" wx:if="{{canSelectCreator}}">
+      <text class="filter-label">创建人</text>
+      <picker range="{{creators}}" range-key="displayName" bindchange="onCreator"><view class="picker-value">{{creatorName}}</view></picker>
+    </view>
+    <view class="filter-item" wx:else><text class="filter-label">统计数据</text><text class="picker-value">仅我创建的账单</text></view>
     <view class="filter-item">
       <text class="filter-label">统计范围</text>
       <picker range="{{scopeLabels}}" value="{{scopeIndex}}" bindchange="onScopeChange">
@@ -14,7 +19,7 @@
       </picker>
     </view>
     <view class="filter-item">
-      <text class="filter-label">排行收支类型</text>
+      <text class="filter-label">收支类型</text>
       <picker range="{{directionLabels}}" value="{{directionIndex}}" bindchange="onDirectionChange">
         <view class="picker-value">{{directionLabels[directionIndex]}}</view>
       </picker>
@@ -55,14 +60,36 @@
     </view>
 
     <view class="section">
-      <view class="section-heading"><text class="section-title">分类占比</text><text class="row-detail">{{directionLabels[directionIndex]}} · ¥{{categoryTotal}}</text></view>
-      <view class="card list-card">
-        <view class="ranking-row" wx:for="{{categoryItems}}" wx:key="id">
-          <view class="row-line"><text class="row-name">{{item.name}}</text><text>¥{{item.amount}} · {{item.percentage}}%</text></view>
+      <text class="section-title">账户收支</text>
+      <view class="card list-card account-summary-card">
+        <view class="account-row" wx:for="{{accountItems}}" wx:key="id">
+          <view class="row-line account-heading">
+            <view class="row-caption"><text class="flow-icon {{item.net < 0 ? 'flow-negative' : item.net > 0 ? 'flow-positive' : 'flow-neutral'}}" aria-hidden="true">{{item.net < 0 ? '↓' : item.net > 0 ? '↑' : '−'}}</text><text class="row-name">{{item.name}}</text></view>
+            <text class="account-net">净 ¥{{item.net}}</text>
+          </view>
+          <text class="account-breakdown">收入 {{item.income}} · 支出 {{item.expense}} · {{item.entryCount}} 笔</text>
+        </view>
+        <text class="empty-text" wx:if="{{!accountItems.length}}">暂无账户流水</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-heading"><text class="section-title">分类占比</text><text class="row-detail">按收支分别统计</text></view>
+      <view class="card list-card category-group {{group.entryType === 'INCOME' ? 'ranking-income' : 'ranking-expense'}}" wx:for="{{categoryGroups}}" wx:for-item="group" wx:key="entryType">
+        <view class="ranking-heading">
+          <view class="ranking-caption"><text class="ranking-label">{{group.label}}</text><text class="row-detail">占总{{group.label}}比例</text><text class="flow-icon direction-icon" aria-hidden="true">{{group.entryType === 'INCOME' ? '+' : '−'}}</text></view>
+          <text class="ranking-total">{{group.entryType === 'INCOME' ? '+' : '-'}} ¥{{group.total}}</text>
+        </view>
+        <view class="ranking-row" wx:for="{{group.items}}" wx:key="id">
+          <view class="row-line category-heading">
+            <view class="row-caption"><text class="flow-icon category-icon" aria-hidden="true">{{group.entryType === 'INCOME' ? '↑' : '↓'}}</text><text class="row-name">{{item.name}}</text></view>
+            <text class="category-amount">¥{{item.amount}} · {{item.percentage}}%</text>
+          </view>
           <view class="bar-track"><view class="bar-fill" style="width: {{item.width}}%;"></view></view>
         </view>
-        <text class="empty-text" wx:if="{{!categoryItems.length}}">暂无排行数据</text>
+        <text class="empty-text" wx:if="{{!group.items.length}}">暂无{{group.label}}数据</text>
       </view>
+      <view class="card state-card" wx:if="{{loading && !categoryGroups.length}}">正在加载分类占比…</view>
     </view>
 
     <view class="section">
@@ -86,25 +113,19 @@
     </view>
 
     <view class="section">
-      <text class="section-title">账户收支</text>
-      <view class="card list-card">
-        <view class="account-row" wx:for="{{accountItems}}" wx:key="id">
-          <view class="row-line"><text class="row-name">{{item.name}}</text><text>净 ¥{{item.net}}</text></view>
-          <text class="row-detail">收入 {{item.income}} · 支出 {{item.expense}} · {{item.entryCount}} 笔</text>
+      <view class="section-heading"><text class="section-title">成员排行</text><text class="row-detail">按收支分别统计</text></view>
+      <view class="card list-card member-group {{group.entryType === 'INCOME' ? 'ranking-income' : 'ranking-expense'}}" wx:for="{{memberGroups}}" wx:for-item="group" wx:key="entryType">
+        <view class="ranking-heading">
+          <view class="ranking-caption"><text class="ranking-label">{{group.label}}</text><text class="row-detail">占总{{group.label}}比例</text></view>
+          <text class="ranking-total">{{group.entryType === 'INCOME' ? '+' : '-'}} ¥{{group.total}}</text>
         </view>
-        <text class="empty-text" wx:if="{{!accountItems.length}}">暂无账户流水</text>
-      </view>
-    </view>
-
-    <view class="section">
-      <text class="section-title">成员排行 · 合计 ¥{{memberTotal}}</text>
-      <view class="card list-card">
-        <view class="ranking-row" wx:for="{{memberItems}}" wx:key="id">
+        <view class="ranking-row" wx:for="{{group.items}}" wx:key="id">
           <view class="row-line"><text class="row-name">{{item.name}}</text><text>¥{{item.amount}} · {{item.percentage}}%</text></view>
-          <view class="bar-track"><view class="bar-fill member-bar" style="width: {{item.width}}%;"></view></view>
+          <view class="bar-track"><view class="bar-fill" style="width: {{item.width}}%;"></view></view>
         </view>
-        <text class="empty-text" wx:if="{{!memberItems.length}}">暂无成员数据</text>
+        <text class="empty-text" wx:if="{{!group.items.length}}">暂无{{group.label}}数据</text>
       </view>
+      <view class="card state-card" wx:if="{{loading && !memberGroups.length}}">正在加载成员排行…</view>
     </view>
   </block>
 </view>

@@ -63,8 +63,8 @@ public class JdbcAuthStore implements AuthStore {
     private static final String INSERT_LEDGER_SQL = """
             INSERT INTO ledger (
                 id, name, currency, timezone, owner_user_id,
-                max_members, status, created_at, updated_at
-            ) VALUES (1, '共享账本', 'CNY', 'Asia/Shanghai', ?, ?, 'ACTIVE', ?, ?)
+                status, created_at, updated_at
+            ) VALUES (1, '共享账本', 'CNY', 'Asia/Shanghai', ?, 'ACTIVE', ?, ?)
             """;
 
     private static final String INSERT_OWNER_MEMBERSHIP_SQL = """
@@ -270,11 +270,10 @@ public class JdbcAuthStore implements AuthStore {
     }
 
     @Override
-    public void insertLedger(long ownerUserId, int maxMembers, Instant now) {
+    public void insertLedger(long ownerUserId, Instant now) {
         Timestamp timestamp = Timestamp.from(now);
         jdbc().update(INSERT_LEDGER_SQL, new Object[]{
                 ownerUserId,
-                maxMembers,
                 timestamp,
                 timestamp
         });

@@ -1,5 +1,17 @@
 <view class="trend">
   <view class="legend"><text>金额（元）</text><view class="legend-series"><text class="dot income-dot"></text><text>收入</text><text class="dot expense-dot"></text><text>支出</text></view></view>
-  <canvas id="trend-canvas" type="2d" class="trend-canvas" aria-label="每日收入与支出趋势，准确金额见下方每日明细"></canvas>
+  <view id="trend-plot" class="trend-plot" role="img" aria-label="每日收入与支出趋势，准确金额见下方每日明细">
+    <block wx:if="{{chart}}">
+      <block wx:for="{{chart.ticks}}" wx:key="index">
+        <view class="grid-line" style="left: {{chart.left}}px; top: {{item.y}}px; width: {{chart.right - chart.left}}px;"></view>
+        <text class="axis-y" style="top: {{item.y}}px;">{{item.label}}</text>
+      </block>
+      <text class="axis-x" wx:for="{{chart.xTicks}}" wx:key="index" style="left: {{item.x}}px; top: {{chart.bottom + 10}}px;">{{item.label}}</text>
+      <block wx:for="{{series}}" wx:for-item="line" wx:key="name">
+        <view wx:for="{{line.segments}}" wx:key="index" class="trend-segment series-{{line.name}}" style="left: {{item.x}}px; top: {{item.y - 1}}px; width: {{item.width}}px; transform: rotate({{item.angle}}deg);"></view>
+        <view wx:for="{{line.dots}}" wx:key="index" class="trend-dot series-{{line.name}}" style="left: {{item.x}}px; top: {{item.y}}px;"></view>
+      </block>
+    </block>
+  </view>
   <text class="fallback" wx:if="{{drawFailed}}">趋势图暂不可用，请查看下方每日明细</text>
 </view>

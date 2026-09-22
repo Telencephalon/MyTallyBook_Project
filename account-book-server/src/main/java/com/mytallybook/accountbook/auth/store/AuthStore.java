@@ -18,7 +18,7 @@ public interface AuthStore {
 
     long insertUser(String openid, String unionid, String nickname, Instant now);
 
-    void insertLedger(long ownerUserId, int maxMembers, Instant now);
+    void insertLedger(long ownerUserId, Instant now);
 
     long insertOwnerMembership(long ownerUserId, Instant now);
 
@@ -51,6 +51,7 @@ public interface AuthStore {
 
     Optional<LedgerView> findLedger(long ledgerId);
 
+    // maxUsers is retained schema metadata; invited membership has no capacity limit.
     record AppConfigState(boolean initialized, int maxUsers, long version) {
     }
 
@@ -76,6 +77,7 @@ public interface AuthStore {
     ) {
     }
 
+    // maxMembers is legacy metadata and must not be used as an API or membership limit.
     record LedgerView(
             long id,
             String name,

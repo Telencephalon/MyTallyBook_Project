@@ -1,20 +1,38 @@
-<view class="page">
-  <view class="toolbar">
-    <picker range="{{['全部类型','支出','收入']}}" bindchange="onTypeFilter"><view>类型：{{entryType || '全部'}}</view></picker>
-    <picker range="{{['全部状态','启用','停用']}}" bindchange="onStatusFilter"><view>状态：{{status || '全部'}}</view></picker>
-    <button wx:if="{{canManage}}" class="create-button" bindtap="openCreate">＋ 新增分类</button>
+<view class="page refined-page catalog-page category-page" bindtap="closeMenu">
+  <text wx:if="{{!canManage && !loading}}" class="catalog-hint">共享分类由所有者维护。</text>
+  <view class="catalog-toolbar">
+    <view class="catalog-filters">
+      <picker range="{{['全部类型','支出','收入']}}" value="{{entryType === 'EXPENSE' ? 1 : entryType === 'INCOME' ? 2 : 0}}" disabled="{{loading || busy}}" bindchange="onTypeFilter">
+        <view class="filter-control"><text>类型</text><view class="filter-pill">{{entryType === 'EXPENSE' ? '支出' : entryType === 'INCOME' ? '收入' : '全部'}}<text class="filter-caret"/></view></view>
+      </picker>
+      <picker range="{{['全部状态','启用','停用']}}" value="{{status === 'ACTIVE' ? 1 : status === 'DISABLED' ? 2 : 0}}" disabled="{{loading || busy}}" bindchange="onStatusFilter">
+        <view class="filter-control"><text>状态</text><view class="filter-pill">{{status === 'ACTIVE' ? '启用' : status === 'DISABLED' ? '停用' : '全部'}}<text class="filter-caret"/></view></view>
+      </picker>
+    </view>
+    <button wx:if="{{canManage}}" class="add-button" disabled="{{loading || busy}}" catchtap="openCreate"><text class="add-sign">＋</text>新增分类</button>
   </view>
-  <view wx:if="{{loading}}">加载中…</view>
+  <view wx:if="{{loading}}" class="card empty-state">正在加载分类…</view>
   <view class="error-panel" wx:if="{{errorMessage}}">
-    {{errorMessage}}<text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
-    <button size="mini" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button>
+    <text>{{errorMessage}}</text><text wx:if="{{requestId}}">请求编号：{{requestId}}</text>
+    <button class="button button-secondary" disabled="{{loading || busy}}" loading="{{loading}}" bindtap="retry">重新加载</button>
   </view>
-  <view class="empty" wx:if="{{!loading && !errorMessage && items.length === 0}}">暂无分类</view>
-  <view class="card row" wx:for="{{items}}" wx:key="id">
-    <view><text>{{item.name}}</text><text class="muted">{{item.entryType === 'EXPENSE' ? '支出' : '收入'}} · {{item.status === 'ACTIVE' ? '启用' : '停用'}} · 排序 {{item.sortNo}}</text></view>
-    <view wx:if="{{canManage}}">
-      <button size="mini" data-id="{{item.id}}" bindtap="openEdit">编辑/启停</button>
-      <button size="mini" type="warn" data-id="{{item.id}}" bindtap="onDelete">删除</button>
+  <view class="card empty-state" wx:if="{{!loading && !errorMessage && items.length === 0}}">暂无分类</view>
+  <view class="catalog-list">
+    <view class="card catalog-card category-card {{openMenuId === item.id ? 'menu-open' : ''}}" wx:for="{{items}}" wx:key="id">
+      <view class="category-symbol tone-{{item.tone}}" aria-hidden="true">{{item.symbol}}</view>
+      <view class="category-copy">
+        <text class="catalog-name">{{item.name}}</text>
+        <view class="category-meta">
+          <text>{{item.entryType === 'EXPENSE' ? '支出' : item.entryType === 'INCOME' ? '收入' : '收支通用'}}</text>
+          <text class="status-badge {{item.status === 'ACTIVE' ? 'status-active' : 'status-disabled'}}">{{item.status === 'ACTIVE' ? '启用' : '停用'}}</text>
+          <text>排序 {{item.sortNo}}</text>
+        </view>
+      </view>
+      <button wx:if="{{canManage}}" class="menu-trigger" disabled="{{loading || busy}}" data-id="{{item.id}}" catchtap="toggleMenu" aria-label="{{item.name}}的更多操作" aria-expanded="{{openMenuId === item.id}}" hover-class="menu-hover">⋮</button>
+      <view wx:if="{{canManage && openMenuId === item.id}}" class="action-menu">
+        <button class="menu-action" disabled="{{loading || busy}}" data-id="{{item.id}}" catchtap="openEdit">编辑 / 启停</button>
+        <button class="menu-action menu-danger" disabled="{{loading || busy}}" data-id="{{item.id}}" catchtap="onDelete">删除</button>
+      </view>
     </view>
   </view>
 </view>

@@ -61,7 +61,7 @@ class EntryHttpTests {
         when(store.list(any())).thenReturn(List.of(entry()));
         when(store.count(any())).thenReturn(1L);
         when(store.find(40)).thenReturn(Optional.of(entry()));
-        when(store.creators()).thenReturn(List.of(new EntryStore.CreatorRow(2, "家庭成员")));
+        when(store.creators(2L)).thenReturn(List.of(new EntryStore.CreatorRow(2, "家庭成员")));
         when(store.findByClientRequestId(UUID)).thenReturn(Optional.empty());
         when(store.findCategory(7)).thenReturn(Optional.of(new EntryStore.CategoryReference(7, "EXPENSE", "餐饮", "ACTIVE")));
         when(store.findAccount(8)).thenReturn(Optional.of(new EntryStore.AccountReference(8, "现金", "ACTIVE")));
@@ -139,6 +139,33 @@ class EntryHttpTests {
         }
         mvc.perform(delete("/api/v1/entries/40").header("Authorization", "Bearer member"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminCannotReadUpdateOrDeleteAnotherCreatorsEntry() throws Exception {
+        when(store.find(40)).thenReturn(Optional.of(entry()));
+
+        mvc.perform(get("/api/v1/entries/40").header("Authorization", "Bearer admin"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+        mvc.perform(put("/api/v1/entries/40").header("Authorization", "Bearer admin")
+                        .contentType("application/json").content(updateBody()))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/entries/40?version=0").header("Authorization", "Bearer admin"))
+                .andExpect(status().isForbidden());
+        verify(store, never()).update(anyLong(), any(), any(), anyLong(), anyLong(), any(), any(), anyLong(), any(), anyLong(), any());
+        verify(store, never()).softDelete(anyLong(), any(), anyLong(), anyLong());
+        verifyNoInteractions(audit);
+    }
+
+    @Test
+    void memberAndAdminCannotForgeCreatorInListQuery() throws Exception {
+        for (String token : List.of("member", "admin")) {
+            mvc.perform(get("/api/v1/entries?createdBy=1").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        }
+        verifyNoInteractions(store);
     }
 
     private static String createBody() {

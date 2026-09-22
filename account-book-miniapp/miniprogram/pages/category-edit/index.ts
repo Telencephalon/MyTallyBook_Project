@@ -1,4 +1,5 @@
 import { getRuntime } from '../../runtime'
+import { creatorScopeIdentity } from '../../utils/creator-scope'
 import type { EntryType, ResourceStatus } from '../../types/catalog'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
@@ -64,7 +65,7 @@ Page({
   },
 
   sessionKey(runtime: ReturnType<typeof getRuntime>) {
-    return `${this.data.id}:${runtime.session.getRevision()}:${runtime.session.getToken() || ''}`
+    return `${this.data.id}:${creatorScopeIdentity(runtime.session)}:${runtime.session.getToken() || ''}`
   },
 
   clearForContextChange() {
@@ -97,7 +98,7 @@ Page({
   },
 
   markDraftDirty() {
-    if (this.data.busy || this.data.loading) return false
+    if (getRuntime().session.getUser()?.role !== 'OWNER' || this.data.busy || this.data.loading) return false
     try {
       const runtime = getRuntime()
       this._draftOwner = this.syncContext(runtime)
@@ -140,7 +141,7 @@ Page({
         return
       }
       const role = runtime.session.getUser()?.role
-      this.setData({ canManage: role === 'OWNER' || role === 'ADMIN' })
+      this.setData({ canManage: role === 'OWNER' })
       const revision = runtime.session.getRevision()
       if (this.data.editing) {
         const sameLoadedSession = this._loadedId === this.data.id && this._loadedRevision === revision
@@ -266,7 +267,7 @@ Page({
   },
 
   async onSubmit() {
-    if (!this.data.canManage || this.data.loading || this.data.busy || this.data.canRetryRead) return
+    if (getRuntime().session.getUser()?.role !== 'OWNER' || !this.data.canManage || this.data.loading || this.data.busy || this.data.canRetryRead) return
     const runtime = getRuntime()
     const contextKey = this.sessionKey(runtime)
     if (this._contextKey !== contextKey || (this._draftOwner && this._draftOwner !== contextKey)) {

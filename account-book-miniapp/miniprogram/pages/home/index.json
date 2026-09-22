@@ -1,4 +1,5 @@
 {
   "navigationBarTitleText": "共享账本",
+  "backgroundColor": "#F5F6FA",
   "enablePullDownRefresh": false
 }

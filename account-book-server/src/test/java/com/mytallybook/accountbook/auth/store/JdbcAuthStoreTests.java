@@ -50,6 +50,17 @@ class JdbcAuthStoreTests {
     }
 
     @Test
+    void ledgerCreationLeavesLegacyCapacityAtItsDatabaseDefault() {
+        store.insertLedger(7L, NOW);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> arguments = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate).update(sql.capture(), arguments.capture());
+        assertThat(normalize(sql.getValue())).doesNotContain("max_members");
+        assertThat(arguments.getValue()).containsExactly(7L, java.sql.Timestamp.from(NOW), java.sql.Timestamp.from(NOW));
+    }
+
+    @Test
     void locksTheSingletonConfigurationRowForInitialization() {
         AuthStore.AppConfigState expected = new AuthStore.AppConfigState(false, 10, 3);
         when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class)))

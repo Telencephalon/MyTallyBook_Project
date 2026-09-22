@@ -207,7 +207,7 @@ class AuthHttpIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.name").value("共享账本"))
-                .andExpect(jsonPath("$.data.maxMembers").value(10));
+                .andExpect(jsonPath("$.data.maxMembers").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
