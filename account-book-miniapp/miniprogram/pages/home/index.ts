@@ -41,7 +41,7 @@ Page({
     this._active = true
     ++this._generation
     this.setData({
-      loading: false, recentLoading: false,
+      loading: false, recentLoading: false, canManageCatalog: false,
       recentEntries: [], recentError: '', recentRequestId: '',
     })
     if (!this.data.loggingOut) await this.loadContext(true)
@@ -79,7 +79,7 @@ Page({
       return
     }
 
-    this.setData({ loading: true, canManageInvites: false, errorMessage: '', requestId: '' })
+    this.setData({ loading: true, canManageInvites: false, canManageCatalog: false, errorMessage: '', requestId: '' })
     try {
       await runtime.flow.refreshContext()
       if (!isCurrent()) return
@@ -141,7 +141,7 @@ Page({
       timezone: ledger.timezone,
       maxMembers: ledger.maxMembers,
       canManageInvites: user.role === 'OWNER' || user.role === 'ADMIN',
-      canManageCatalog: user.role === 'OWNER' || user.role === 'ADMIN',
+      canManageCatalog: user.role === 'OWNER',
       errorMessage: '',
       requestId: '',
     })
@@ -163,11 +163,11 @@ Page({
   },
 
   openCategories() {
-    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) wx.navigateTo({ url: '/pages/category-list/index' })
+    if (!this.data.loading && !this.data.loggingOut && this.data.canManageCatalog && getRuntime().session.getUser()?.role === 'OWNER') wx.navigateTo({ url: '/pages/category-list/index' })
   },
 
   openAccounts() {
-    if (!this.data.loading && !this.data.loggingOut && getRuntime().session.getUser()) wx.navigateTo({ url: '/pages/account-list/index' })
+    if (!this.data.loading && !this.data.loggingOut && this.data.canManageCatalog && getRuntime().session.getUser()?.role === 'OWNER') wx.navigateTo({ url: '/pages/account-list/index' })
   },
 
   openEntries() {

@@ -18,8 +18,15 @@
   <view class="card" wx:elif="{{loadState === 'empty'}}">暂无符合条件的账单</view>
   <block wx:else>
     <view class="card row" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
-      <view><text>{{item.entryDate}} · {{item.categoryName}}{{item.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text><text>{{item.creatorName}} · {{item.accountName}}{{item.accountStatus === 'DISABLED' ? '（已停用）' : ''}}</text></view>
-      <text>{{item.entryType === 'INCOME' ? '+' : '-'}}{{item.amount}}</text>
+      <view class="entry-main">
+        <text>{{item.entryDate}} · {{item.categoryName}}{{item.categoryStatus === 'DISABLED' ? '（已停用）' : ''}}</text>
+        <view class="entry-meta">
+          <text wx:if="{{item.personName}}" class="entry-person {{item.note ? 'with-note' : ''}}">{{item.personName}}</text>
+          <text wx:if="{{item.personName && item.note}}" class="entry-separator"> · </text>
+          <text wx:if="{{item.note}}" class="entry-note">{{item.note}}</text>
+        </view>
+      </view>
+      <text class="entry-amount">{{item.entryType === 'INCOME' ? '+' : '-'}}{{item.amount}}</text>
     </view>
     <view class="pager"><button disabled="{{page <= 1 || loading}}" bindtap="previousPage">上一页</button><text>{{page}} / 共 {{total}} 条</text><button disabled="{{page * pageSize >= total || loading}}" bindtap="nextPage">下一页</button></view>
   </block>

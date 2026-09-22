@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { UserProfile } from '../miniprogram/types/api'
 
 type PageShape = Record<string, any> & { data: Record<string, any>; setData(update: object): void }
 const user = { userId: 1, memberId: 11, nickname: '昵称', displayName: null, avatarUrl: null, ledgerId: 1, role: 'OWNER' as const }
@@ -6,10 +7,10 @@ const ledger = { id: 1, name: '共享账本', currency: 'CNY', timezone: 'Asia/S
 const summary = { month: '2024-09', income: '100.30', expense: '30.05', net: '70.25', entryCount: 3 }
 const entry = { id: 40, entryType: 'EXPENSE', amount: '30.05', categoryName: '餐饮', accountName: '现金', entryDate: '2024-09-01', note: null }
 
-function runtimeFor() {
+function runtimeFor(currentUser: UserProfile | null = user) {
   let revision = 1
   return {
-    session: { getRevision: () => revision, getToken: () => 'token', getUser: () => user, getLedger: () => ledger },
+    session: { getRevision: () => revision, getToken: () => 'token', getUser: () => currentUser, getLedger: () => ledger },
     flow: { refreshContext: vi.fn().mockResolvedValue(undefined), logout: vi.fn().mockResolvedValue('UNCHANGED') },
     statistics: { summary: vi.fn().mockResolvedValue(summary) },
     entries: { list: vi.fn().mockResolvedValue({ items: [entry], page: 1, pageSize: 5, total: 1 }) },
@@ -32,6 +33,46 @@ async function loadPage(runtime: ReturnType<typeof runtimeFor>) {
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('home bookkeeping dashboard', () => {
+  it.each(['ADMIN', 'MEMBER'] as const)('hides catalog and blocks home catalog navigation for %s', async role => {
+    const runtime = runtimeFor({ ...user, role })
+    const page = await loadPage(runtime)
+    await page.onShow()
+    expect(page.data.canManageCatalog).toBe(false)
+    page.openCategories()
+    page.openAccounts()
+    expect(wx.navigateTo).not.toHaveBeenCalled()
+  })
+
+  it('shows catalog for the owner after context loads', async () => {
+    const page = await loadPage(runtimeFor())
+    expect(page.data.canManageCatalog).toBe(false)
+    await page.onShow()
+    expect(page.data.canManageCatalog).toBe(true)
+  })
+
+  it('hides stale owner catalog while refreshing and after refresh failure', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    await page.onShow()
+    runtime.flow.refreshContext.mockRejectedValueOnce(new Error('offline'))
+    const refresh = page.onShow()
+    expect(page.data.canManageCatalog).toBe(false)
+    await refresh
+    expect(page.data.canManageCatalog).toBe(false)
+  })
+
+  it('blocks stale owner catalog navigation after the session role changes', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage(runtime)
+    await page.onShow()
+    vi.spyOn(runtime.session, 'getUser').mockReturnValue({ ...user, role: 'ADMIN' })
+    page.openCategories()
+    page.openAccounts()
+    expect(wx.navigateTo).not.toHaveBeenCalled()
+    await page.onShow()
+    expect(page.data.canManageCatalog).toBe(false)
+  })
+
   it('loads recent entries without requesting the removed monthly summary', async () => {
     const runtime = runtimeFor()
     const page = await loadPage(runtime)

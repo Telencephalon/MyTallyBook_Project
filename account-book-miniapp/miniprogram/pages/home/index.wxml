@@ -31,7 +31,7 @@
     </view>
     <view class="card recent-list" wx:elif="{{recentEntries.length}}">
       <view class="recent-row" wx:for="{{recentEntries}}" wx:key="id" data-id="{{item.id}}" bindtap="openEntries">
-        <view class="recent-main"><text class="recent-name">{{item.categoryName}}</text><text class="recent-meta">{{item.entryDate}} · {{item.accountName}}</text></view>
+        <view class="recent-main"><text class="recent-name">{{item.categoryName}}</text><text class="recent-meta">{{item.entryDate}}{{item.personName ? ' · ' + item.personName : ''}}</text></view>
         <text class="recent-amount {{item.entryType === 'INCOME' ? 'income' : 'expense'}}">{{item.entryType === 'INCOME' ? '+' : '-'}}¥{{item.amount}}</text>
       </view>
     </view>
@@ -47,7 +47,7 @@
     </view>
   </view>
 
-  <view class="section">
+  <view class="section" wx:if="{{canManageCatalog}}">
     <text class="section-title">记账字典</text>
     <view class="card catalog-actions">
       <button class="button button-secondary" disabled="{{loading || loggingOut}}" bindtap="openCategories">分类{{canManageCatalog ? '管理' : '查看'}}</button>

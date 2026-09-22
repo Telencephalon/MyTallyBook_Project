@@ -33,7 +33,7 @@ function runtimeFor(uuidValues: string[] = [UUID]) {
   const create = vi.fn().mockResolvedValue(entry)
   const intent = new EntryCreateIntent(create, nextUuid)
   return {
-    session: { getRevision: () => revision, getUser: () => ({ userId: 2, role: 'MEMBER' }) },
+    session: { getRevision: () => revision, getUser: () => ({ userId: 2, role: 'MEMBER', nickname: '微信昵称', displayName: '家庭成员' as string | null }) },
     flow: { refreshContext: vi.fn().mockResolvedValue(undefined) },
     catalog: {
       categories: vi.fn().mockResolvedValue({ items: [category] }),
@@ -101,6 +101,57 @@ describe('entry create page', () => {
     page.onLoad({ preset: 'life' }); await page.onShow()
     expect(page.data.categoryName).toBe('生活')
     expect(page.data.categoryId).toBe(11)
+    expect(page.data.personName).toBe('家庭成员')
+  })
+
+  it.each([null, '', '   '])('defaults life person name to nickname when display name is %s', async displayName => {
+    const runtime = runtimeFor()
+    vi.spyOn(runtime.session, 'getUser').mockReturnValue({ userId: 2, role: 'MEMBER', nickname: '微信昵称', displayName })
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'life' }); await page.onShow()
+    expect(page.data.personName).toBe('微信昵称')
+  })
+
+  it.each(['自填人名', ''])('preserves life person name edit %s across page return and dictionary reload', async personName => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'life' }); await page.onShow()
+    page.onPersonNameInput({ detail: { value: personName } })
+    page.onHide(); await page.onShow()
+    await page.loadDictionaries()
+    expect(page.data.personName).toBe(personName)
+  })
+
+  it('uses refreshed creator identity and resets the life default after an identity switch', async () => {
+    const runtime = runtimeFor()
+    const getUser = vi.spyOn(runtime.session, 'getUser')
+    runtime.flow.refreshContext.mockImplementationOnce(async () => {
+      getUser.mockReturnValue({ userId: 2, role: 'MEMBER', nickname: '微信昵称', displayName: '最新姓名' })
+    })
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'life' }); await page.onShow()
+    expect(page.data.personName).toBe('最新姓名')
+    page.onPersonNameInput({ detail: { value: '手工修改' } })
+    runtime.setRevision(2)
+    getUser.mockReturnValue({ userId: 3, role: 'MEMBER', nickname: '另一昵称', displayName: '另一成员' })
+    await page.onShow()
+    expect(page.data.personName).toBe('另一成员')
+  })
+
+  it('submits the default life creator name as the separate person field', async () => {
+    const runtime = runtimeFor()
+    runtime.catalog.categories.mockResolvedValue({ items: [{ ...category, name: '生活' }] })
+    const page = await loadPage('entry-create', runtime)
+    page.onLoad({ preset: 'life' }); await page.onShow()
+    page.onAmountInput({ detail: { value: '12' } })
+    await page.onSubmit()
+    expect(runtime.entries.create).toHaveBeenCalledWith(expect.objectContaining({ personName: '家庭成员', note: null }))
+  })
+
+  it('keeps ordinary entry person name empty', async () => {
+    const page = await loadPage('entry-create', runtimeFor())
+    page.onLoad(); await page.onShow()
+    expect(page.data.personName).toBe('')
   })
 
   it('leaves missing favor defaults unselected and preserves later user choices', async () => {

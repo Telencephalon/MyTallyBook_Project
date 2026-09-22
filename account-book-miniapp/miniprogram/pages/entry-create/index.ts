@@ -14,6 +14,7 @@ Page({
     loading: false, busy: false, canRetry: false, canRetryRead: false, errorMessage: '', requestId: '',
   },
   _active: true, _generation: 0, _dictionaryGeneration: 0, _loadedRevision: -1,
+  _personNameInitialized: false,
   _intent: null as EntryCreateIntent | null,
 
   onLoad(query: Record<string, string | undefined> = {}) {
@@ -42,6 +43,7 @@ Page({
       this.disableDepartureWarning()
       this._intent?.abandon()
       this._intent = runtime.entries.newCreateIntent()
+      this._personNameInitialized = false
       this.setData({ entryType: 'EXPENSE', amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '',
         entryDate: shanghaiToday(), note: '', personName: '', canRetry: false })
     }
@@ -86,6 +88,13 @@ Page({
     try {
       await runtime.flow.refreshContext()
       if (!current()) return
+      if (this.data.lifePreset && !this._personNameInitialized) {
+        const user = runtime.session.getUser()
+        if (user) {
+          this.setData({ personName: user.displayName?.trim() || user.nickname?.trim() || '' })
+          this._personNameInitialized = true
+        }
+      }
       const [categories, accounts] = await Promise.all([
         runtime.catalog.categories(this.data.entryType, 'ACTIVE'),
         runtime.catalog.accounts('ACTIVE'),
@@ -129,7 +138,12 @@ Page({
     await this.loadDictionaries()
   },
   onAmountInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ amount: event.detail.value }) },
-  onPersonNameInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ personName: event.detail.value }) },
+  onPersonNameInput(event: WechatMiniprogram.Input) {
+    if (!this.formLocked()) {
+      this._personNameInitialized = true
+      this.setData({ personName: event.detail.value })
+    }
+  },
   onNoteInput(event: WechatMiniprogram.Input) { if (!this.formLocked()) this.setData({ note: event.detail.value }) },
   onDateChange(event: WechatMiniprogram.PickerChange) { if (!this.formLocked()) this.setData({ entryDate: String(event.detail.value) }) },
   onCategoryChange(event: WechatMiniprogram.PickerChange) {
