@@ -9,6 +9,6 @@
     <view class="detail-row"><text>创建人</text><text>{{entry.creatorName}}</text></view>
     <view class="detail-note"><text class="secondary-text">备注</text><text>{{entry.note || '无'}}</text></view>
   </view>
-  <button wx:if="{{entry && canEdit}}" class="button button-primary" disabled="{{busy}}" bindtap="openEdit">编辑账单</button>
-  <button wx:if="{{entry && canDelete}}" class="button button-danger" loading="{{busy}}" disabled="{{busy}}" bindtap="onDelete">删除账单</button>
+  <button wx:if="{{entry && canEdit}}" class="button button-primary" disabled="{{loading || busy || openingEdit}}" bindtap="openEdit">编辑账单</button>
+  <button wx:if="{{entry && canDelete}}" class="button button-danger" loading="{{busy}}" disabled="{{loading || busy || openingEdit}}" bindtap="onDelete">删除账单</button>
 </view>

@@ -495,6 +495,101 @@ describe.each(['entry-create', 'entry-edit'] as const)('%s direct type selection
 })
 
 describe('entry list/detail/edit pages', () => {
+  function installNavigationStack(urls: string[]) {
+    const stackPage = (url: string) => {
+      const [path, query = ''] = url.split('?')
+      return { route: path.replace(/^\//, ''), options: Object.fromEntries(new URLSearchParams(query)) }
+    }
+    const pages = urls.map(stackPage)
+    vi.stubGlobal('getCurrentPages', () => pages.slice())
+    vi.mocked(wx.navigateTo).mockImplementation((options: any) => {
+      pages.push(stackPage(options.url)); options.success?.({ errMsg: 'navigateTo:ok' })
+    })
+    vi.mocked(wx.redirectTo).mockImplementation((options: any) => {
+      pages.splice(-1, 1, stackPage(options.url)); options.success?.({ errMsg: 'redirectTo:ok' })
+    })
+    vi.mocked(wx.navigateBack).mockImplementation((options: any = {}) => {
+      pages.splice(Math.max(1, pages.length - (options.delta || 1)))
+      options.success?.({ errMsg: 'navigateBack:ok' })
+    })
+    return pages
+  }
+
+  it.each(['home', 'entry-list'])('returns to the original %s with one back after twelve edit/save cycles', async origin => {
+    const runtime = runtimeFor()
+    let saved = { ...entry }
+    runtime.entries.detail.mockImplementation(async () => saved)
+    runtime.entries.update.mockImplementation(async (_id, body) => {
+      saved = { ...saved, ...body, version: saved.version + 1 }
+      return saved
+    })
+    const detail = await loadPage('entry-detail', runtime)
+    const editorTemplate = await loadPage('entry-edit', runtime)
+    const pages = installNavigationStack([`/pages/${origin}/index`, '/pages/entry-detail/index?id=40'])
+    detail.onLoad({ id: '40' }); await detail.onShow()
+
+    for (let index = 0; index < 12; index++) {
+      detail.openEdit()
+      expect(pages).toHaveLength(3)
+      detail.onHide()
+      const editor = { ...editorTemplate, data: structuredClone(editorTemplate.data) } as PageShape
+      editor.onLoad({ id: '40' }); await editor.onShow()
+      editor.onNoteInput({ detail: { value: `第 ${index + 1} 次修改` } })
+      await editor.onSubmit()
+      expect(pages.map(page => page.route)).toEqual([`pages/${origin}/index`, 'pages/entry-detail/index'])
+      editor.onUnload()
+      await detail.onShow()
+      expect(detail.data.entry.note).toBe(`第 ${index + 1} 次修改`)
+      expect(detail.data.entry.version).toBe(entry.version + index + 1)
+    }
+    wx.navigateBack({ delta: 1 })
+    expect(pages.map(page => page.route)).toEqual([`pages/${origin}/index`])
+    expect(wx.redirectTo).not.toHaveBeenCalled()
+    expect(wx.switchTab).not.toHaveBeenCalled()
+  })
+
+  it('collapses consecutive old copies of this detail page after saving', async () => {
+    const page = await loadPage('entry-edit', runtimeFor())
+    const pages = installNavigationStack(['/pages/home/index',
+      '/pages/entry-detail/index?id=40', '/pages/entry-detail/index?id=40',
+      '/pages/entry-detail/index?id=40', '/pages/entry-edit/index?id=40'])
+    page.onLoad({ id: '40' }); await page.onShow(); await page.onSubmit()
+    expect(pages.map(item => item.route)).toEqual(['pages/home/index', 'pages/entry-detail/index'])
+    expect(wx.navigateBack).toHaveBeenCalledWith(expect.objectContaining({ delta: 3 }))
+  })
+
+  it.each([
+    ['/pages/entry-list/index', '/pages/entry-edit/index?id=40'],
+    ['/pages/home/index', '/pages/entry-detail/index?id=17', '/pages/entry-edit/index?id=40'],
+  ])('replaces a direct editor without returning to an unrelated bill: %j', async (...urls) => {
+    const page = await loadPage('entry-edit', runtimeFor())
+    const pages = installNavigationStack(urls)
+    page.onLoad({ id: '40' }); await page.onShow(); await page.onSubmit()
+    expect(pages).toHaveLength(urls.length)
+    expect(pages[pages.length - 1]).toEqual({ route: 'pages/entry-detail/index', options: { id: '40' } })
+    expect(wx.navigateBack).not.toHaveBeenCalled()
+  })
+
+  it('ignores rapid repeated edit taps and unlocks when the detail is shown again', async () => {
+    const page = await loadPage('entry-detail', runtimeFor())
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.openEdit(); page.openEdit(); page.openEdit()
+    expect(wx.navigateTo).toHaveBeenCalledOnce()
+    page.onHide(); await page.onShow(); page.openEdit()
+    expect(wx.navigateTo).toHaveBeenCalledTimes(2)
+  })
+
+  it('allows retry when opening the editor fails, but blocks editing while loading or hidden', async () => {
+    const page = await loadPage('entry-detail', runtimeFor())
+    page.onLoad({ id: '40' }); await page.onShow()
+    vi.mocked(wx.navigateTo).mockImplementationOnce((options: any) => options.fail?.({ errMsg: 'navigateTo:fail' }))
+    page.openEdit(); page.openEdit()
+    expect(wx.navigateTo).toHaveBeenCalledTimes(2)
+    page.onHide(); page.openEdit()
+    await page.onShow(); page.setData({ loading: true }); page.openEdit()
+    expect(wx.navigateTo).toHaveBeenCalledTimes(2)
+  })
+
   it('quick filter controls do not inherit the full-panel toggle', () => {
     const wxml = readFileSync(new URL('../miniprogram/pages/entry-list/index.wxml', import.meta.url), 'utf8')
     expect(wxml.match(/<view class="filter-toggle"[^>]*>/)?.[0]).not.toContain('bindtap=')

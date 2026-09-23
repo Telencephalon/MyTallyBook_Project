@@ -5,6 +5,7 @@ import { entryDraft, validEntryId } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
 import { creatorScopeIdentity } from '../../utils/creator-scope'
+import { returnToEntryDetail } from '../../utils/navigation'
 
 interface Choice { id: number; name: string; status: ResourceStatus; original?: boolean }
 
@@ -183,7 +184,7 @@ Page({
     this.setData({ busy: true, errorMessage: '', requestId: '', canRetryRead: false })
     try {
       const saved = await runtime.entries.update(this.data.id, body)
-      if (current()) wx.redirectTo({ url: `/pages/entry-detail/index?id=${saved.id}` })
+      if (current()) returnToEntryDetail(saved.id)
     } catch (error) {
       if (!current()) return
       const view = toErrorView(error); this.setData({ errorMessage: view.message, requestId: view.requestId, canReload: conflict(error), canRetryRead: false })

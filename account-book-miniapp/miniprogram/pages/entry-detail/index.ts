@@ -8,7 +8,7 @@ import { creatorScopeIdentity } from '../../utils/creator-scope'
 
 Page({
   data: { id: 0, entry: null as Entry | null, canEdit: false, canDelete: false,
-    loading: false, busy: false, canRetry: false, errorMessage: '', requestId: '' },
+    loading: false, busy: false, openingEdit: false, canRetry: false, errorMessage: '', requestId: '' },
   _active: true, _generation: 0, _writeOperation: 0,
   _scopeIdentity: '',
   syncScope() {
@@ -24,7 +24,7 @@ Page({
     catch (error) { const view = toErrorView(error); this.setData({ errorMessage: view.message }) }
   },
   async onShow() {
-    this._active = true; this.setData({ loading: false })
+    this._active = true; this.setData({ loading: false, openingEdit: false })
     if (this.data.busy) return
     if (!this.data.id) return
     const generation = ++this._generation
@@ -63,9 +63,24 @@ Page({
   },
   onHide() { this._active = false; ++this._generation; this.setData({ loading: false }) },
   onUnload() { this._active = false; ++this._generation; this.setData({ loading: false }) },
-  openEdit() { this.syncScope(); if (this.data.canEdit && !this.data.busy) wx.navigateTo({ url: `/pages/entry-edit/index?id=${this.data.id}` }) },
+  openEdit() {
+    if (!this._active || this.data.loading || this.data.busy || this.data.openingEdit) return
+    this.syncScope()
+    if (!this.data.canEdit) return
+    const generation = this._generation
+    this.setData({ openingEdit: true })
+    wx.navigateTo({
+      url: `/pages/entry-edit/index?id=${this.data.id}`,
+      fail: () => {
+        if (this._active && generation === this._generation) {
+          this.setData({ openingEdit: false, errorMessage: '暂时无法打开编辑页，请重试' })
+        }
+      },
+    })
+  },
   async onRetry() { if (!this.data.canRetry || this.data.loading || this.data.busy) return; await this.onShow() },
   async onDelete() {
+    if (!this._active || this.data.loading || this.data.openingEdit) return
     this.syncScope()
     const item = this.data.entry
     if (!item || !this.data.canDelete || this.data.busy) return
