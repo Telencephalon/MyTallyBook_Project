@@ -23,11 +23,12 @@ public class EntryController {
             @RequestParam(required = false) String accountId,
             @RequestParam(required = false) String createdBy,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String personName,
             @RequestParam(required = false) String page,
             @RequestParam(required = false) String pageSize,
             HttpServletRequest request) {
         var filters = EntryFilters.parse(dateFrom, dateTo, entryType, categoryId, accountId,
-                createdBy, keyword, page, pageSize);
+                createdBy, keyword, personName, page, pageSize);
         return ApiResponse.success(service.list(actor, filters), RequestIdFilter.getRequestId(request));
     }
 

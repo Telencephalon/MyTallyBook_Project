@@ -78,11 +78,11 @@ afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() }
 describe('entry create page', () => {
   it('opens the favor shortcut with named defaults and submits a separate person name', async () => {
     const runtime = runtimeFor()
-    runtime.catalog.categories.mockResolvedValue({ items: [category, { ...category, id: 9, name: '人情' }] })
+    runtime.catalog.categories.mockResolvedValue({ items: [category, { ...category, id: 9, name: '人情', entryType: 'INCOME' }] })
     runtime.catalog.accounts.mockResolvedValue({ items: [account, { ...account, id: 10, name: '微信' }] })
     const page = await loadPage('entry-create', runtime)
     page.onLoad({ preset: 'favor' }); await page.onShow()
-    expect(page.data).toMatchObject({ entryType: 'EXPENSE', categoryId: 9, accountId: 10,
+    expect(page.data).toMatchObject({ entryType: 'INCOME', categoryId: 9, accountId: 10,
       categoryName: '人情', accountName: '微信', amount: '', note: '', personName: '', entryDate: shanghaiToday() })
     expect(runtime.entries.create).not.toHaveBeenCalled()
     page.onAmountInput({ detail: { value: '500' } })
@@ -100,6 +100,7 @@ describe('entry create page', () => {
     const page = await loadPage('entry-create', runtime)
     page.onLoad({ preset: 'life' }); await page.onShow()
     expect(page.data.categoryName).toBe('生活')
+    expect(page.data.entryType).toBe('EXPENSE')
     expect(page.data.categoryId).toBe(11)
     expect(page.data.personName).toBe('家庭成员')
   })
@@ -156,6 +157,7 @@ describe('entry create page', () => {
 
   it('leaves missing favor defaults unselected and preserves later user choices', async () => {
     const runtime = runtimeFor()
+    runtime.catalog.categories.mockResolvedValue({ items: [{ ...category, entryType: 'BOTH' }] })
     const page = await loadPage('entry-create', runtime)
     page.onLoad({ preset: 'favor' }); await page.onShow()
     expect(page.data).toMatchObject({ categoryId: 0, accountId: 0 })
@@ -491,6 +493,78 @@ describe.each(['entry-create', 'entry-edit'] as const)('%s direct type selection
     expect(page.data.categoryId).toBe(0)
     expect(page.data.categories ?? page.data.categoryOptions).toEqual([])
     expect(page.data.loading).toBe(false)
+  })
+})
+
+describe('entry search and category switching', () => {
+  it('only searches after confirmation and ignores a second confirmation while loading', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    runtime.entries.list.mockClear()
+    page.onPersonNameSearch({ detail: { value: '张' } })
+    page.onPersonNameSearch({ detail: { value: '张三' } })
+    expect(runtime.entries.list).not.toHaveBeenCalled()
+    const read = deferred<typeof entry>()
+    runtime.entries.list.mockImplementationOnce(async () => { await read.promise; return { items: [entry], page: 1, pageSize: 20, total: 1 } })
+    const first = page.onApplyFilters()
+    await Promise.resolve(); await Promise.resolve()
+    await page.onApplyFilters()
+    expect(runtime.entries.list).toHaveBeenCalledOnce()
+    read.resolve(entry); await first
+    expect(page.data.loading).toBe(false)
+  })
+
+  it('applies a trimmed person-name filter alongside the note and preserves it for paging', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    page.onPersonNameSearch({ detail: { value: '  张三  ' } })
+    page.setData({ keyword: '礼金', page: 3 })
+    await page.onApplyFilters()
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ personName: '张三', keyword: '礼金', page: 1 }))
+    page.setData({ total: 50 })
+    await page.nextPage()
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ personName: '张三', page: 2 }))
+  })
+
+  it('keeps a BOTH category selected when editing and switching direction', async () => {
+    const runtime = runtimeFor()
+    runtime.catalog.categories.mockResolvedValue({ items: [{ ...category, entryType: 'BOTH' }] })
+    const page = await loadPage('entry-edit', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data).toMatchObject({ categoryId: 7, selectedCategoryName: '餐饮', entryType: 'INCOME' })
+  })
+
+  it('selects a compatible category and restores the previous choice on repeated edit switches', async () => {
+    const runtime = runtimeFor()
+    const income = { ...category, id: 9, name: '工资', entryType: 'INCOME' }
+    runtime.catalog.categories.mockResolvedValue({ items: [category, income, { ...income, id: 10, name: '奖金' }] })
+    const page = await loadPage('entry-edit', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data).toMatchObject({ categoryId: 9, selectedCategoryName: '工资' })
+    page.onCategoryChange({ detail: { value: 1 } })
+    page.onTypeChange({ currentTarget: { dataset: { type: 'EXPENSE' } } })
+    expect(page.data.categoryId).toBe(7)
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data).toMatchObject({ categoryId: 10, selectedCategoryName: '奖金' })
+    expect(runtime.catalog.categories).toHaveBeenCalledTimes(1)
+    expect(runtime.entries.update).not.toHaveBeenCalled()
+  })
+
+  it('restores an original disabled category only when returning to its original direction', async () => {
+    const runtime = runtimeFor()
+    runtime.entries.detail.mockResolvedValue({ ...entry, categoryId: 70, categoryName: '旧餐饮', categoryStatus: 'DISABLED' })
+    runtime.catalog.categories.mockResolvedValue({ items: [{ ...category, id: 9, name: '工资', entryType: 'INCOME' }] })
+    const page = await loadPage('entry-edit', runtime)
+    page.onLoad({ id: '40' }); await page.onShow()
+    page.onTypeChange({ currentTarget: { dataset: { type: 'INCOME' } } })
+    expect(page.data.categoryId).toBe(9)
+    expect(page.data.categoryOptions.some((item: any) => item.id === 70)).toBe(false)
+    page.onTypeChange({ currentTarget: { dataset: { type: 'EXPENSE' } } })
+    expect(page.data.categoryId).toBe(70)
   })
 })
 

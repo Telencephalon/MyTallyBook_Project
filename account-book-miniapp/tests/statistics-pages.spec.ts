@@ -195,13 +195,13 @@ describe('statistics page', () => {
     const page = await loadPage(runtime)
     runtime.statistics.summary.mockImplementation(query => ({
       ...summary,
-      month: typeof query === 'string' ? query : summary.month,
+      month: typeof query === 'string' ? query : query.month ?? summary.month,
     }))
     today.mockReturnValue('2024-02-01')
 
     await page.onShow()
 
-    expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-02')
+    expect(runtime.statistics.summary).toHaveBeenCalledWith({ month: '2024-02', createdBy: 1 })
     expect(page.data.month).toBe('2024-02')
 
     runtime.statistics.summary.mockClear()
@@ -221,19 +221,19 @@ describe('statistics page', () => {
     page.setData({ month: '2024-09' })
 
     await page.onShow()
-    expect(runtime.statistics.summary).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.daily).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'INCOME')
-    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'EXPENSE')
-    expect(runtime.statistics.accounts).toHaveBeenCalledWith('2024-09')
-    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'INCOME')
-    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'EXPENSE')
+    expect(runtime.statistics.summary).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 })
+    expect(runtime.statistics.daily).toHaveBeenCalledWith({ month: '2024-09', page: 1, createdBy: 1 })
+    expect(runtime.statistics.categories).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 }, 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 }, 'EXPENSE')
+    expect(runtime.statistics.accounts).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 })
+    expect(runtime.statistics.members).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 }, 'INCOME')
+    expect(runtime.statistics.members).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 }, 'EXPENSE')
 
     Object.values(runtime.statistics).forEach(mock => mock.mockClear())
     await page.onDirectionChange({ detail: { value: '1' } })
     expect(page.data.entryType).toBe('INCOME')
-    expect(runtime.statistics.categories).toHaveBeenCalledWith('2024-09', 'INCOME')
-    expect(runtime.statistics.members).toHaveBeenCalledWith('2024-09', 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 }, 'INCOME')
+    expect(runtime.statistics.members).toHaveBeenCalledWith({ month: '2024-09', createdBy: 1 }, 'INCOME')
     expect(runtime.statistics.summary).not.toHaveBeenCalled()
     expect(runtime.statistics.daily).not.toHaveBeenCalled()
     expect(runtime.statistics.accounts).not.toHaveBeenCalled()
@@ -268,8 +268,8 @@ describe('statistics page', () => {
 
     expect(page.data.month).toBe('2024-08')
     expect(page.data.summary.net).toBe('9.00')
-    expect(runtime.statistics.daily).toHaveBeenCalledWith('2024-08')
-    expect(runtime.statistics.accounts).toHaveBeenCalledWith('2024-08')
+    expect(runtime.statistics.daily).toHaveBeenCalledWith({ month: '2024-08', page: 1, createdBy: 1 })
+    expect(runtime.statistics.accounts).toHaveBeenCalledWith({ month: '2024-08', createdBy: 1 })
   })
 
   it('direction change during initial full load replaces it with a complete latest-direction snapshot', async () => {
@@ -301,7 +301,7 @@ describe('statistics page', () => {
     expect(page.data.categoryGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '100.30' })])
     expect(page.data.memberGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '100.30' })])
     expect(runtime.statistics.summary).toHaveBeenCalledTimes(2)
-    expect(runtime.statistics.categories).toHaveBeenLastCalledWith('2024-09', 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenLastCalledWith({ month: '2024-09', createdBy: 1 }, 'INCOME')
   })
 
   it('direction change during month reload keeps the new month complete and ignores the old error', async () => {
@@ -338,7 +338,7 @@ describe('statistics page', () => {
     expect(page.data.categoryGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '80.00' })])
     expect(page.data.memberGroups).toEqual([expect.objectContaining({ entryType: 'INCOME', total: '80.00' })])
     expect(page.data.errorMessage).toBe('')
-    expect(runtime.statistics.categories).toHaveBeenLastCalledWith('2024-08', 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenLastCalledWith({ month: '2024-08', createdBy: 1 }, 'INCOME')
   })
 
   it('direction change after a settled initial failure performs a full recovery load', async () => {
@@ -461,7 +461,7 @@ describe('statistics page', () => {
 
     await page.onScopeChange({ detail: { value: '1' } })
 
-    const query = { rangeType: 'ALL' }
+    const query = { rangeType: 'ALL', createdBy: 1 }
     expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
     expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
     expect(runtime.statistics.categories).toHaveBeenCalledWith(query, 'INCOME')
@@ -492,7 +492,7 @@ describe('statistics page', () => {
     page.onCustomEndChange({ detail: { value: '2024-03-01' } })
     await page.onApplyCustomRange()
 
-    const query = { startDate: '2024-02-29', endDate: '2024-03-01' }
+    const query = { startDate: '2024-02-29', endDate: '2024-03-01', createdBy: 1 }
     expect(runtime.statistics.summary).toHaveBeenCalledWith(query)
     expect(runtime.statistics.daily).toHaveBeenCalledWith({ ...query, page: 1 })
     expect(page.data.appliedRangeLabel).toBe('2024-02-29 至 2024-03-01')
@@ -513,7 +513,7 @@ describe('statistics page', () => {
 
     await page.onDailyNext()
 
-    expect(runtime.statistics.daily).toHaveBeenCalledWith({ month: '2024-09', page: 2 })
+    expect(runtime.statistics.daily).toHaveBeenCalledWith({ month: '2024-09', page: 2, createdBy: 1 })
     expect(runtime.statistics.summary).not.toHaveBeenCalled()
     expect(runtime.statistics.categories).not.toHaveBeenCalled()
     expect(runtime.statistics.accounts).not.toHaveBeenCalled()

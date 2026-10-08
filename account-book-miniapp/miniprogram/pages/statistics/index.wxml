@@ -3,7 +3,7 @@
   <view class="filter-card card">
     <view class="filter-item" wx:if="{{canSelectCreator}}">
       <text class="filter-label">创建人</text>
-      <picker range="{{creators}}" range-key="displayName" bindchange="onCreator"><view class="picker-value">{{creatorName}}</view></picker>
+      <picker range="{{creators}}" range-key="displayName" value="{{creatorIndex}}" bindchange="onCreator"><view class="picker-value">{{creatorName}}</view></picker>
     </view>
     <view class="filter-item" wx:else><text class="filter-label">统计数据</text><text class="picker-value">仅我创建的账单</text></view>
     <view class="filter-item">

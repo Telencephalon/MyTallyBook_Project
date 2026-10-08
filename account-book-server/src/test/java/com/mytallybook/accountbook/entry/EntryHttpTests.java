@@ -168,6 +168,29 @@ class EntryHttpTests {
         verifyNoInteractions(store);
     }
 
+    @Test
+    void personNameSearchIsPassedToBothPersonalListAndCount() throws Exception {
+        when(store.list(any())).thenReturn(List.of(entry()));
+        when(store.count(any())).thenReturn(1L);
+        mvc.perform(get("/api/v1/entries").param("personName", "  张三  ").param("keyword", "礼金")
+                        .header("Authorization", "Bearer member"))
+                .andExpect(status().isOk());
+        verify(store).list(argThat(filters -> Long.valueOf(2).equals(filters.createdBy())
+                && filters.toString().contains("personName=张三") && "礼金".equals(filters.keyword())));
+        verify(store).count(argThat(filters -> Long.valueOf(2).equals(filters.createdBy())
+                && filters.toString().contains("personName=张三")));
+    }
+
+    @Test
+    void overlyLongPersonNameSearchIsRejectedBeforeQueries() throws Exception {
+        when(store.list(any())).thenReturn(List.of());
+        when(store.count(any())).thenReturn(0L);
+        mvc.perform(get("/api/v1/entries").param("personName", "名".repeat(65))
+                        .header("Authorization", "Bearer member"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(store);
+    }
+
     private static String createBody() {
         return "{\"entryType\":\"EXPENSE\",\"amount\":\"3.40\",\"categoryId\":7,\"accountId\":8,"
                 + "\"entryDate\":\"2026-09-06\",\"note\":\"晚餐\",\"clientRequestId\":\"" + UUID + "\"}";

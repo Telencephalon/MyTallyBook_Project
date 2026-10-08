@@ -317,10 +317,10 @@ class EntryServiceTests {
     }
 
     @Test
-    void ownerCreatorOptionsRetainFormerCreators() {
+    void ownerCreatorOptionsIncludeAllActiveCreatorsReturnedByStore() {
         var h = harness(MemberRole.OWNER);
         when(h.store.creators(isNull())).thenReturn(List.of(new EntryStore.CreatorRow(1, "昵称"),
-                new EntryStore.CreatorRow(99, "历史成员")));
+                new EntryStore.CreatorRow(99, "在册成员")));
 
         assertEquals(List.of(1L, 99L), h.service.creators(h.actor).items().stream()
                 .map(EntryModels.CreatorOption::userId).toList());

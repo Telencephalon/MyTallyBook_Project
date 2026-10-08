@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { EntryApi } from '../miniprogram/services/entry'
 
 describe('entry wire contract', () => {
+  it('encodes person-name searches separately from note searches and creator scope', async () => {
+    const request = vi.fn().mockResolvedValue({ items: [] })
+    const api = new EntryApi({ request } as never)
+    await api.list({ createdBy: 2, keyword: '礼金', personName: '张%_\\' } as never)
+    expect(request).toHaveBeenCalledWith({ method: 'GET', path: '/api/v1/entries?createdBy=2&keyword=%E7%A4%BC%E9%87%91&personName=%E5%BC%A0%25_%5C' })
+  })
   it('encodes every list filter literally and uses the creators route', async () => {
     const request = vi.fn().mockResolvedValue({ items: [] })
     const api = new EntryApi({ request } as never)

@@ -16,6 +16,29 @@ import static org.mockito.Mockito.*;
 
 class JdbcEntryStoreTests {
     @Test
+    void listAndCountCombineLiteralPersonNameNoteAndCreatorBeforePagination() {
+        var jdbc = mock(JdbcTemplate.class);
+        var store = new JdbcEntryStore(jdbc);
+        var filters = EntryFilters.parse("2026-09-01", "2026-09-30", null, null, null, "2",
+                "礼金", "张%_\\", "2", "10");
+        store.list(filters);
+        store.count(filters);
+        var listSql = ArgumentCaptor.forClass(String.class);
+        var listArgs = ArgumentCaptor.forClass(Object[].class);
+        var countSql = ArgumentCaptor.forClass(String.class);
+        var countArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).query(listSql.capture(), any(RowMapper.class), listArgs.capture());
+        verify(jdbc).queryForObject(countSql.capture(), eq(Long.class), countArgs.capture());
+        String predicate = "AND e.created_by=? AND e.note LIKE ? ESCAPE '\\\\' AND e.person_name LIKE ? ESCAPE '\\\\'";
+        assertThat(normalize(listSql.getValue())).contains(predicate + " ORDER BY");
+        assertThat(normalize(countSql.getValue())).endsWith(predicate);
+        assertThat(listArgs.getValue()).containsExactly(java.sql.Date.valueOf("2026-09-01"),
+                java.sql.Date.valueOf("2026-10-01"), 2L, "%礼金%", "%张\\%\\_\\\\%", 10, 10L);
+        assertThat(countArgs.getValue()).containsExactly(java.sql.Date.valueOf("2026-09-01"),
+                java.sql.Date.valueOf("2026-10-01"), 2L, "%礼金%", "%张\\%\\_\\\\%");
+    }
+
+    @Test
     void personNameIsBoundSeparatelyForInsertAndUpdateAndReadFromTheRow() throws Exception {
         var jdbc = mock(JdbcTemplate.class);
         var store = new JdbcEntryStore(jdbc);
@@ -146,19 +169,19 @@ class JdbcEntryStoreTests {
     }
 
     @Test
-    void creatorsUnionActiveMembersWithHistoricalCreatorsWithoutAuthenticationFields() {
+    void creatorsOnlyIncludeActiveMembersAndNeverReintroduceFormerCreatorsFromEntries() {
         var jdbc = mock(JdbcTemplate.class);
         new JdbcEntryStore(jdbc).creators();
 
         var sql = ArgumentCaptor.forClass(String.class);
         verify(jdbc).query(sql.capture(), any(RowMapper.class), any(Object[].class));
         assertThat(normalize(sql.getValue()))
-                .contains("UNION", "lm.status='ACTIVE'", "u.status='ACTIVE'", "book_entry", "created_by", "display_name", "nickname")
-                .doesNotContain("openid", "unionid", "auth_session");
+                .contains("lm.ledger_id=1", "lm.status='ACTIVE'", "u.status='ACTIVE'", "display_name", "nickname")
+                .doesNotContain("UNION", "book_entry", "openid", "unionid", "auth_session");
     }
 
     @Test
-    void personalCreatorsQueryBindsUserIdAfterTheCurrentAndHistoricalUnion() {
+    void personalCreatorsQueryBindsUserIdAmongActiveMembers() {
         var jdbc = mock(JdbcTemplate.class);
         new JdbcEntryStore(jdbc).creators(99L);
 
@@ -166,8 +189,8 @@ class JdbcEntryStoreTests {
         var args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
         assertThat(normalize(sql.getValue()))
-                .contains(") creator_options WHERE user_id=? GROUP BY user_id", "UNION")
-                .doesNotContain("user_id=99");
+                .contains("lm.user_id=?", "lm.status='ACTIVE'", "u.status='ACTIVE'")
+                .doesNotContain("user_id=99", "UNION", "book_entry");
         assertThat(args.getValue()).containsExactly(99L);
     }
 

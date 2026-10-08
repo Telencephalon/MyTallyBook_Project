@@ -9,6 +9,26 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EntryFiltersTests {
     @Test
+    void personNameIsTrimmedAndPreservedWhenApplyingPersonalScope() {
+        var filters = EntryFilters.parse(null, null, null, null, null, null, "礼金", "  张三  ", "2", "10");
+        var scoped = filters.withCreator(2L);
+        assertEquals("张三", scoped.personName());
+        assertEquals("礼金", scoped.keyword());
+        assertEquals(2L, scoped.createdBy());
+        assertEquals(10L, scoped.offset());
+        assertNull(EntryFilters.parse(null, null, null, null, null, null, null, "   ", null, null).personName());
+    }
+
+    @Test
+    void personNameLengthUsesTheSame64CharacterLimitAsBills() {
+        String supplementary = new String(Character.toChars(0x20000));
+        assertEquals(supplementary.repeat(64), EntryFilters.parse(null, null, null, null, null, null,
+                null, supplementary.repeat(64), null, null).personName());
+        assertThrows(BusinessException.class, () -> EntryFilters.parse(null, null, null, null, null, null,
+                null, "人".repeat(65), null, null));
+    }
+
+    @Test
     void defaultsCoverMysqlDateRangeAndFirstPage() {
         var filters = EntryFilters.parse(null, null, null, null, null, null, null, null, null);
 

@@ -24,6 +24,7 @@ Page({
   _active: true, _generation: 0, _writeOperation: 0, _dirty: false, _loadedId: 0, _loadedRevision: -1,
   _allCategories: null as Category[] | null,
   _categoryRevision: -1,
+  _categoryByType: {} as Partial<Record<EntryType, Choice>>,
   _scopeIdentity: '',
   syncScope() {
     const identity = creatorScopeIdentity(getRuntime().session)
@@ -31,6 +32,7 @@ Page({
       this._scopeIdentity = identity
       this._dirty = false; this._loadedId = 0; this._loadedRevision = -1
       this._allCategories = null; this._categoryRevision = -1
+      this._categoryByType = {}
       this.setData({ entryType: 'EXPENSE', amount: '', categoryId: 0, accountId: 0, selectedCategoryName: '', selectedAccountName: '',
         entryDate: '', note: '', personName: '', version: 0, categoryOptions: [], accountOptions: [],
         canEdit: false, canReload: false, canRetryRead: false, loading: false, errorMessage: '', requestId: '' })
@@ -102,6 +104,7 @@ Page({
     if (!accounts.some(item => item.id === entry.accountId)) {
       accounts.push({ id: entry.accountId, name: `${entry.accountName}（已停用）`, status: entry.accountStatus, original: true })
     }
+    this._categoryByType = { [entry.entryType]: categories.find(item => item.id === entry.categoryId) }
     this.setData({ entryType: entry.entryType, amount: entry.amount, categoryId: entry.categoryId,
       accountId: entry.accountId, entryDate: entry.entryDate, note: entry.note || '', personName: entry.personName || '', version: entry.version,
       selectedCategoryName: categories.find(item => item.id === entry.categoryId)?.name || entry.categoryName,
@@ -148,10 +151,20 @@ Page({
   onTypeChange(event: WechatMiniprogram.TouchEvent) {
     if (this.formLocked() || !this._active || !this._allCategories) return
     if (this._categoryRevision !== getRuntime().session.getRevision()) return
-    const entryType = event.currentTarget.dataset.type
+    const entryType: unknown = event.currentTarget.dataset.type
     if ((entryType !== 'EXPENSE' && entryType !== 'INCOME') || entryType === this.data.entryType) return
+    const previous = this.data.categoryOptions.find(item => item.id === this.data.categoryId)
+    if (previous) this._categoryByType[this.data.entryType] = previous
+    const categories = this.categoryChoices(entryType)
+    const remembered = this._categoryByType[entryType]
+    // An original disabled category is only restored when returning to its original direction.
+    if (remembered?.original && !categories.some(item => item.id === remembered.id)) categories.push(remembered)
+    const selected = categories.find(item => item.id === this.data.categoryId)
+      || categories.find(item => item.id === remembered?.id)
+      || categories.find(item => item.name === previous?.name)
+      || categories[0]
     this._dirty = true
-    this.setData({ entryType, categoryId: 0, selectedCategoryName: '', categoryOptions: this.categoryChoices(entryType) })
+    this.setData({ entryType, categoryId: selected?.id ?? 0, selectedCategoryName: selected?.name ?? '', categoryOptions: categories })
   },
   async onReload() {
     if (!this.data.canReload || this.data.loading || this.data.busy) return

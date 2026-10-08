@@ -39,6 +39,62 @@ async function loadPage(name: string, runtime: ReturnType<typeof runtimeFor>) {
 afterEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('personal bookkeeping scope', () => {
+  it.each(['home', 'entry-list', 'statistics'])('%s preserves an explicit all-members choice on tab return', async name => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    await page.onShow()
+    await page.onCreator({ detail: { value: '0' } })
+    page.onHide(); await page.onShow()
+    expect(page.data).toMatchObject({ createdBy: 0, creatorName: '全部成员', creatorIndex: 0 })
+  })
+
+  it.each(['MEMBER', 'ADMIN'])('person-name searches remain personal for %s without offering cross-creator choices', async role => {
+    const runtime = runtimeFor(role)
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    page.onPersonNameSearch({ detail: { value: '张三' } })
+    await page.onApplyFilters()
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ personName: '张三' }))
+    expect(runtime.entries.list.mock.lastCall?.[0]?.createdBy).toBeUndefined()
+    expect(page.data.canSelectCreator).toBe(false)
+    expect(page.data.creators).toEqual([])
+    expect(runtime.entries.creators).not.toHaveBeenCalled()
+  })
+
+  it.each(['home', 'entry-list', 'statistics'])('%s defaults owner reads to their own creator while retaining all and other choices', async name => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    await page.onShow()
+    expect(page.data).toMatchObject({ createdBy: 1, creatorName: '所有者', creatorIndex: 2, canSelectCreator: true })
+    if (name === 'statistics') expect(runtime.statistics.summary).toHaveBeenLastCalledWith(expect.objectContaining({ createdBy: 1 }))
+    else expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ createdBy: 1 }))
+    expect(page.data.creators.some((item: any) => item.userId === 0)).toBe(true)
+    expect(page.data.creators.some((item: any) => item.userId === 2)).toBe(true)
+  })
+
+  it.each(['home', 'entry-list', 'statistics'])('%s falls back to self when the selected creator leaves the active options', async name => {
+    const runtime = runtimeFor()
+    const page = await loadPage(name, runtime)
+    await page.onShow()
+    await page.onCreator({ detail: { value: '1' } })
+    runtime.entries.creators.mockResolvedValue({ items: [] })
+    if (name === 'statistics') await page.loadAll()
+    else if (name === 'home') await page.loadRecent()
+    else await page.load(true)
+    expect(page.data.createdBy).toBe(1)
+    expect(page.data.creators.some((item: any) => item.userId === 2)).toBe(false)
+    if (name === 'statistics') expect(runtime.statistics.summary).toHaveBeenLastCalledWith(expect.objectContaining({ createdBy: 1 }))
+    else expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ createdBy: 1 }))
+  })
+
+  it('clears the person search and restores the owner self filter when clearing entry filters', async () => {
+    const runtime = runtimeFor()
+    const page = await loadPage('entry-list', runtime)
+    await page.onShow()
+    page.setData({ createdBy: 0, personName: '张三', keyword: '礼金', page: 3 })
+    await page.onClearFilters()
+    expect(page.data).toMatchObject({ createdBy: 1, personName: '', keyword: '', page: 1 })
+  })
   it('forwards createdBy through every statistics endpoint including daily paging and directions', async () => {
     const request = vi.fn().mockResolvedValue({})
     const api = new StatisticsApi({ request } as never)
@@ -62,7 +118,7 @@ describe('personal bookkeeping scope', () => {
     const page = await loadPage(name, runtime)
     await page.onShow()
     expect(page.data.canSelectCreator).toBe(true)
-    expect(page.data.creators).toEqual([{ userId: 0, displayName: '全部成员' }, { userId: 2, displayName: '历史成员' }])
+    expect(page.data.creators).toEqual([{ userId: 0, displayName: '全部成员' }, { userId: 2, displayName: '历史成员' }, { userId: 1, displayName: '所有者' }])
     page.setData({ page: 3, dailyPage: 2 })
     await page.onCreator({ detail: { value: '1' } })
     expect(page.data.creatorName).toBe('历史成员')
@@ -148,7 +204,7 @@ describe('personal bookkeeping scope', () => {
     resolve(name === 'statistics' ? summary : { items: [{ id: 99 }], page: 1, pageSize: 20, total: 1 })
     await operation
     if (name === 'statistics') expect(page.data.categoryGroups).toEqual([])
-    expect(page.data.createdBy).toBe(0)
+    expect(page.data.createdBy).toBe(9)
     expect(page.data.creators).toEqual([])
     expect(name === 'statistics' ? page.data.summary : name === 'home' ? page.data.recentEntries : page.data.items).toEqual(name === 'statistics' ? null : [])
   })

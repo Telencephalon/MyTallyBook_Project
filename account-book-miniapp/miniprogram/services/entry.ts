@@ -20,7 +20,7 @@ function query(filters: EntryFilters): string {
   const values: Array<[string, string | number | undefined]> = [
     ['dateFrom', filters.dateFrom], ['dateTo', filters.dateTo], ['entryType', filters.entryType],
     ['categoryId', filters.categoryId], ['accountId', filters.accountId], ['createdBy', filters.createdBy],
-    ['keyword', filters.keyword], ['page', filters.page], ['pageSize', filters.pageSize],
+    ['keyword', filters.keyword], ['personName', filters.personName], ['page', filters.page], ['pageSize', filters.pageSize],
   ]
   const parts = values.filter(([, value]) => value !== undefined && value !== '')
     .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)

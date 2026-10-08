@@ -94,23 +94,13 @@ public class JdbcEntryStore implements EntryStore {
     @Override
     public List<CreatorRow> creators(Long createdBy) {
         String sql = """
-                SELECT user_id, MAX(display_name) AS display_name
-                FROM (
-                    SELECT lm.user_id,
-                           COALESCE(NULLIF(lm.display_name, ''), u.nickname) AS display_name
-                    FROM ledger_member lm
-                    JOIN app_user u ON u.id = lm.user_id
-                    WHERE lm.ledger_id = 1 AND lm.status = 'ACTIVE' AND u.status = 'ACTIVE'
-                    UNION
-                    SELECT e.created_by AS user_id,
-                           COALESCE(NULLIF(lm.display_name, ''), u.nickname) AS display_name
-                    FROM book_entry e
-                    JOIN app_user u ON u.id = e.created_by
-                    LEFT JOIN ledger_member lm ON lm.ledger_id = e.ledger_id AND lm.user_id = e.created_by
-                    WHERE e.ledger_id = 1
-                ) creator_options
-                """ + (createdBy == null ? "" : " WHERE user_id = ?")
-                + " GROUP BY user_id ORDER BY display_name, user_id";
+                SELECT lm.user_id,
+                       COALESCE(NULLIF(lm.display_name, ''), u.nickname) AS display_name
+                FROM ledger_member lm
+                JOIN app_user u ON u.id = lm.user_id
+                WHERE lm.ledger_id = 1 AND lm.status = 'ACTIVE' AND u.status = 'ACTIVE'
+                """ + (createdBy == null ? "" : " AND lm.user_id = ?")
+                + " ORDER BY display_name, lm.user_id";
         Object[] arguments = createdBy == null ? new Object[0] : new Object[]{createdBy};
         return jdbc().query(sql, (row, index) -> new CreatorRow(row.getLong("user_id"), row.getString("display_name")), arguments);
     }
@@ -179,6 +169,10 @@ public class JdbcEntryStore implements EntryStore {
         if (filters.keyword() != null) {
             query.sql.append(" AND e.note LIKE ? ESCAPE '\\\\'");
             query.arguments.add("%" + escapeLike(filters.keyword()) + "%");
+        }
+        if (filters.personName() != null) {
+            query.sql.append(" AND e.person_name LIKE ? ESCAPE '\\\\'");
+            query.arguments.add("%" + escapeLike(filters.personName()) + "%");
         }
         return query;
     }

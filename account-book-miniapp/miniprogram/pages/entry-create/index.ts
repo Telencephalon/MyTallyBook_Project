@@ -20,7 +20,8 @@ Page({
   _intent: null as EntryCreateIntent | null,
 
   onLoad(query: Record<string, string | undefined> = {}) {
-    this.setData({ favorPreset: query.preset === 'favor', lifePreset: query.preset === 'life' })
+    this.setData({ favorPreset: query.preset === 'favor', lifePreset: query.preset === 'life',
+      entryType: query.preset === 'favor' ? 'INCOME' : 'EXPENSE' })
     this.setData({ entryDate: shanghaiToday() })
     try {
       this._intent = getRuntime().entries.newCreateIntent()
@@ -46,7 +47,7 @@ Page({
       this._intent?.abandon()
       this._intent = runtime.entries.newCreateIntent()
       this._personNameInitialized = false
-      this.setData({ entryType: 'EXPENSE', amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '',
+      this.setData({ entryType: this.data.favorPreset ? 'INCOME' : 'EXPENSE', amount: '', categoryId: 0, categoryName: '', accountId: 0, accountName: '',
         entryDate: shanghaiToday(), note: '', personName: '', canRetry: false })
     }
     this._loadedRevision = revision

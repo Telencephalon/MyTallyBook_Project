@@ -4,7 +4,7 @@ import type { Account, Category, EntryType } from '../../types/catalog'
 import type { CreatorOption, Entry } from '../../types/entry'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
-import { creatorOptions, creatorScopeIdentity } from '../../utils/creator-scope'
+import { defaultCreatorScope, resolveCreatorSelection, creatorScopeIdentity } from '../../utils/creator-scope'
 import { canReuseTabSnapshot, captureTabSnapshot, matchesTabSnapshot, type TabSnapshot } from '../../utils/tab-snapshot'
 
 interface HistoryCategory extends Category { displayName: string }
@@ -26,7 +26,7 @@ Page({
     categoryName: '', accountName: '',
     quickCategories: [] as Array<{ id: number; displayName: string }>, categoryIndex: 0, creatorIndex: 0,
     dateFilterExpanded: false, dateDraftFrom: '', dateDraftTo: '', dateFilterError: '',
-    createdBy: 0, creatorName: '全部成员', canSelectCreator: false, keyword: '', page: 1, pageSize: 20, total: 0,
+    createdBy: 0, creatorName: '全部成员', canSelectCreator: false, keyword: '', personName: '', page: 1, pageSize: 20, total: 0,
     loading: false, loadState: 'loading' as LoadState, errorMessage: '', requestId: '', filtersExpanded: false,
   },
   _active: true, _generation: 0,
@@ -76,6 +76,7 @@ Page({
       accountId: this.data.accountId || undefined,
       createdBy: getRuntime().session.getUser()?.role === 'OWNER' ? this.data.createdBy || undefined : undefined,
       keyword: this.data.keyword || undefined, page: this.data.page, pageSize: this.data.pageSize,
+      ...(this.data.personName.trim() ? { personName: this.data.personName.trim() } : {}),
     }
   },
 
@@ -112,7 +113,7 @@ Page({
       const filters = this.filters()
       const query = JSON.stringify(filters)
       if (reuseSnapshot && canReuseTabSnapshot(this._snapshot, runtime.session, query)) return
-      const snapshot = captureTabSnapshot(runtime.session, query)
+      let snapshot = captureTabSnapshot(runtime.session, query)
       this._snapshot = null
       this.setData({ loading: true,
         ...(!matchesTabSnapshot(this._displaySnapshot, runtime.session, query) ? { loadState: 'loading' as LoadState } : {}) })
@@ -122,11 +123,18 @@ Page({
         runtime.catalog.categories(undefined, undefined), runtime.catalog.accounts(undefined),
       ]) : Promise.all([runtime.entries.list(filters)])
       const results = await requests; if (!current()) return
-      const list = results[0]
+      let list = results[0]
       if (includeOptions) {
         const creators = results[1] as Awaited<ReturnType<typeof runtime.entries.creators>>
         const categories = results[2] as Awaited<ReturnType<typeof runtime.catalog.categories>>
         const accounts = results[3] as Awaited<ReturnType<typeof runtime.catalog.accounts>>
+        const selection = resolveCreatorSelection(runtime.session, creators.items, this.data.createdBy)
+        if (selection.createdBy !== this.data.createdBy) {
+          this.setData({ ...selection, page: 1, items: [], total: 0 })
+          snapshot = captureTabSnapshot(runtime.session, JSON.stringify(this.filters()))
+          list = await runtime.entries.list(this.filters())
+          if (!current()) return
+        }
         const categoryOptions = categories.items.map(item => ({
           ...item, displayName: resourceLabel(item.name, item.status),
         }))
@@ -134,11 +142,9 @@ Page({
           ...item, displayName: resourceLabel(item.name, item.status),
         }))
         this.setData({ items: list.items, page: list.page, pageSize: list.pageSize, total: list.total,
-          creators: this.data.canSelectCreator ? creatorOptions(creators.items) : [], categories: categoryOptions, accounts: accountOptions,
+          ...selection, categories: categoryOptions, accounts: accountOptions,
           quickCategories: [{ id: 0, displayName: '全部分类' }, ...categoryOptions],
           categoryIndex: categoryOptions.findIndex(item => item.id === this.data.categoryId) + 1,
-          creatorIndex: creators.items.findIndex(item => item.userId === this.data.createdBy) + 1,
-          creatorName: creators.items.find(item => item.userId === this.data.createdBy)?.displayName || '全部成员',
           categoryName: categoryOptions.find(item => item.id === this.data.categoryId)?.displayName || '',
           accountName: accountOptions.find(item => item.id === this.data.accountId)?.displayName || '',
           loadState: list.items.length ? 'ready' : 'empty' })
@@ -156,7 +162,10 @@ Page({
     } finally { if (current()) this.setData({ loading: false }) }
   },
 
-  async onApplyFilters() { this.setData({ page: 1 }); await this.load(false) },
+  async onApplyFilters() {
+    if (!this._active || this.data.loading) return
+    this.setData({ page: 1 }); await this.load(false)
+  },
   syncCreatorScope() {
     const session = getRuntime().session
     const identity = creatorScopeIdentity(session)
@@ -164,21 +173,25 @@ Page({
     this._creatorIdentity = identity
     if (changed) { this._snapshot = null; this._displaySnapshot = null }
     this.setData({ canSelectCreator: session.getUser()?.role === 'OWNER',
-      ...(changed ? { createdBy: 0, creatorName: '全部成员', creatorIndex: 0, creators: [], items: [], total: 0, page: 1, loading: false,
+      ...(changed ? { ...defaultCreatorScope(session), creatorIndex: 0, creators: [], items: [], total: 0, page: 1, loading: false,
         dateFilterExpanded: false, dateDraftFrom: '', dateDraftTo: '', dateFilterError: '',
         loadState: 'empty' as LoadState, errorMessage: '', requestId: '' } : {}) })
   },
   async retry() { if (!this.data.loading) await this.load(true) },
   async onClearFilters() {
+    this.syncCreatorScope()
+    const own = defaultCreatorScope(getRuntime().session)
     this.setData({ dateFrom: '', dateTo: '', entryType: '', categoryId: 0, accountId: 0,
-      categoryName: '', accountName: '', categoryIndex: 0, createdBy: 0, creatorName: '全部成员', creatorIndex: 0,
-      dateFilterExpanded: false, dateFilterError: '', keyword: '', page: 1 }); await this.load(false)
+      categoryName: '', accountName: '', categoryIndex: 0, ...own,
+      creatorIndex: Math.max(0, this.data.creators.findIndex(item => item.userId === own.createdBy)),
+      dateFilterExpanded: false, dateFilterError: '', keyword: '', personName: '', page: 1 }); await this.load(false)
   },
   async previousPage() { if (this.data.page > 1) { this.setData({ page: this.data.page - 1 }); await this.load(false) } },
   async nextPage() { if (this.data.page * this.data.pageSize < this.data.total) { this.setData({ page: this.data.page + 1 }); await this.load(false) } },
   onDateFrom(event: WechatMiniprogram.PickerChange) { this.setData({ dateFrom: String(event.detail.value) }) },
   onDateTo(event: WechatMiniprogram.PickerChange) { this.setData({ dateTo: String(event.detail.value) }) },
   onKeyword(event: WechatMiniprogram.Input) { this.setData({ keyword: event.detail.value }) },
+  onPersonNameSearch(event: WechatMiniprogram.Input) { this.setData({ personName: event.detail.value }) },
   onType(event: WechatMiniprogram.PickerChange) { this.setData({ entryType: ['', 'EXPENSE', 'INCOME'][Number(event.detail.value)] as '' | EntryType }) },
   async onQuickType(event: WechatMiniprogram.PickerChange) {
     if (!this._active || this.data.loading) return

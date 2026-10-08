@@ -106,7 +106,7 @@ describe('home bookkeeping dashboard', () => {
     await page.onShow()
     expect(tabData).toHaveBeenCalledWith({ selected: 0 })
     expect(runtime.statistics.summary).not.toHaveBeenCalled()
-    expect(runtime.entries.list).toHaveBeenCalledWith({ page: 1, pageSize: 5 })
+    expect(runtime.entries.list).toHaveBeenCalledWith({ page: 1, pageSize: 5, createdBy: 1 })
     expect(page.data.recentEntries).toEqual([entry])
     page.openFavorEntry()
     expect(wx.navigateTo).toHaveBeenCalledWith({ url: '/pages/entry-create/index?preset=favor' })

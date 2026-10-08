@@ -181,7 +181,7 @@ describe.each<PageName>(['entry-list', 'statistics'])('%s tab return', name => {
     page.onHide(); const returning = page.onShow()
     await vi.waitFor(() => expect(businessRead(name, runtime)).toHaveBeenCalledTimes(2))
     expect(name === 'entry-list' ? page.data.items : page.data.daily).toEqual([])
-    expect(page.data.createdBy).toBe(0)
+    expect(page.data.createdBy).toBe(change === 'role' ? 0 : 1)
     read.resolve(name === 'entry-list' ? entryPage : summary); await returning
     if (change === 'role') expect(page.data.creators).toEqual([])
   })
@@ -203,6 +203,20 @@ describe.each<PageName>(['entry-list', 'statistics'])('%s tab return', name => {
 })
 
 describe('query-specific tab snapshots', () => {
+  it('does not reuse a list snapshot from a different person-name search', async () => {
+    const runtime = runtimeFor()
+    const { page } = await loadPage('entry-list', runtime)
+    await page.onShow()
+    page.onPersonNameSearch({ detail: { value: '张三' } })
+    page.onHide(); await page.onShow()
+    expect(runtime.entries.list).toHaveBeenCalledTimes(2)
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ personName: '张三', createdBy: 1 }))
+    page.onPersonNameSearch({ detail: { value: '李四' } })
+    page.onHide(); await page.onShow()
+    expect(runtime.entries.list).toHaveBeenCalledTimes(3)
+    expect(runtime.entries.list).toHaveBeenLastCalledWith(expect.objectContaining({ personName: '李四', createdBy: 1 }))
+  })
+
   it('does not reuse entries for unapplied filter changes or treat a partial filtered load as a full refresh', async () => {
     const runtime = runtimeFor()
     const { page } = await loadPage('entry-list', runtime)
@@ -231,10 +245,10 @@ describe('query-specific tab snapshots', () => {
     expect(page.data.categoryGroups).toHaveLength(1)
     page.onHide(); await page.onShow()
     expect(runtime.statistics.summary).toHaveBeenCalledTimes(2)
-    expect(runtime.statistics.categories).toHaveBeenLastCalledWith('2026-09', 'INCOME')
+    expect(runtime.statistics.categories).toHaveBeenLastCalledWith({ month: '2026-09', createdBy: 1 }, 'INCOME')
     await page.onDailyNext()
     page.onHide(); await page.onShow()
     expect(runtime.statistics.summary).toHaveBeenCalledTimes(3)
-    expect(runtime.statistics.daily).toHaveBeenLastCalledWith({ month: '2026-09', page: 2 })
+    expect(runtime.statistics.daily).toHaveBeenLastCalledWith({ month: '2026-09', page: 2, createdBy: 1 })
   })
 })

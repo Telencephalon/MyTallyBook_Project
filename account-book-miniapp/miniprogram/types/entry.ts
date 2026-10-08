@@ -35,6 +35,7 @@ export interface EntryFilters {
   accountId?: number
   createdBy?: number
   keyword?: string
+  personName?: string
   page?: number
   pageSize?: number
 }

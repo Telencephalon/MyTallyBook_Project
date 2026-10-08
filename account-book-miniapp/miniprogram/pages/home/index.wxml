@@ -37,7 +37,7 @@
       <text class="section-title">最近账单</text>
       <button class="text-button" bindtap="openEntries">全部明细 <text class="chevron"/></button>
     </view>
-    <view class="creator-filter" wx:if="{{canSelectCreator}}"><text>创建人：</text><picker range="{{creators}}" range-key="displayName" disabled="{{recentLoading}}" bindchange="onCreator"><view class="creator-chip"><text class="creator-name">{{creatorName}}</text><text class="creator-arrow">▾</text></view></picker></view>
+    <view class="creator-filter" wx:if="{{canSelectCreator}}"><text>创建人：</text><picker range="{{creators}}" range-key="displayName" value="{{creatorIndex}}" disabled="{{recentLoading}}" bindchange="onCreator"><view class="creator-chip"><text class="creator-name">{{creatorName}}</text><text class="creator-arrow">▾</text></view></picker></view>
     <text wx:else class="creator-filter">仅显示我创建的账单</text>
     <view class="error-panel" wx:if="{{recentError}}">
       <text class="error-message">{{recentError}}</text>

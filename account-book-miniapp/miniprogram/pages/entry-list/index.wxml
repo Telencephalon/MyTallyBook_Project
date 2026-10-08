@@ -11,6 +11,10 @@
       <picker wx:if="{{canSelectCreator}}" class="filter-item" range="{{creators}}" range-key="displayName" value="{{creatorIndex}}" disabled="{{loading}}" bindchange="onCreator"><view class="filter-control"><text class="filter-summary">创建人：{{creatorName}}</text><text class="filter-arrow">⌄</text></view></picker>
       <view wx:else class="filter-item"><view class="filter-control"><text class="filter-summary">仅显示我创建的账单</text></view></view>
     </view>
+    <view class="person-search" wx:if="{{!filtersExpanded}}">
+      <input placeholder="输入人名搜索" aria-label="按人名搜索账单" value="{{personName}}" maxlength="64" confirm-type="search" disabled="{{loading}}" bindinput="onPersonNameSearch" bindconfirm="onApplyFilters"/>
+      <button class="person-search-button" disabled="{{loading}}" bindtap="onApplyFilters">查询</button>
+    </view>
     <view class="filters date-filter" wx:if="{{dateFilterExpanded}}">
       <view class="date-filter-heading"><text>日期范围</text><button class="date-cancel" bindtap="toggleDateFilter">取消</button></view>
       <view class="date-fields">
@@ -20,16 +24,45 @@
       <text class="date-filter-error" wx:if="{{dateFilterError}}" role="alert">{{dateFilterError}}</text>
       <view class="actions"><button class="button button-secondary" disabled="{{loading}}" bindtap="clearDateFilter">不限日期</button><button class="button button-primary" disabled="{{loading}}" bindtap="applyDateFilter">确定</button></view>
     </view>
-    <view class="filters" wx:if="{{filtersExpanded}}">
-      <picker mode="date" value="{{dateFrom}}" bindchange="onDateFrom"><view>开始日期：{{dateFrom || '不限'}}</view></picker>
-      <picker mode="date" value="{{dateTo}}" bindchange="onDateTo"><view>结束日期：{{dateTo || '不限'}}</view></picker>
-      <picker range="{{['全部类型','支出','收入']}}" value="{{entryType === 'EXPENSE' ? 1 : entryType === 'INCOME' ? 2 : 0}}" bindchange="onType"><view>类型：{{entryType === 'INCOME' ? '收入' : entryType === 'EXPENSE' ? '支出' : '全部'}}</view></picker>
-      <picker range="{{categories}}" range-key="displayName" bindchange="onCategory"><view>分类：{{categoryName || '全部'}}</view></picker>
-      <picker range="{{accounts}}" range-key="displayName" bindchange="onAccount"><view>账户：{{accountName || '全部'}}</view></picker>
-      <picker wx:if="{{canSelectCreator}}" range="{{creators}}" range-key="displayName" value="{{creatorIndex}}" bindchange="onCreator"><view>创建人：{{creatorName}}</view></picker>
-      <text wx:else class="hint">仅显示我创建的账单</text>
-      <input placeholder="按备注字面搜索" value="{{keyword}}" bindinput="onKeyword"/>
-      <view class="actions"><button class="button button-secondary" bindtap="onClearFilters">清除筛选</button><button class="button button-primary" bindtap="onApplyFilters">应用筛选</button></view>
+    <view class="advanced-filters" wx:if="{{filtersExpanded}}">
+      <view class="advanced-heading"><text class="advanced-title">高级筛选</text><button class="advanced-collapse" bindtap="toggleFilters">收起</button></view>
+      <view class="advanced-group">
+        <text class="advanced-label">日期范围</text>
+        <view class="advanced-date-range">
+          <picker class="advanced-date-field" mode="date" value="{{dateFrom}}" disabled="{{loading}}" bindchange="onDateFrom" aria-label="开始日期">
+            <view class="advanced-control"><view class="advanced-date-content"><text class="advanced-date-label">开始日期</text><text class="advanced-value">{{dateFrom || '不限'}}</text></view><text class="advanced-arrow" aria-hidden="true"></text></view>
+          </picker>
+          <text class="advanced-date-separator">至</text>
+          <picker class="advanced-date-field" mode="date" value="{{dateTo}}" disabled="{{loading}}" bindchange="onDateTo" aria-label="结束日期">
+            <view class="advanced-control"><view class="advanced-date-content"><text class="advanced-date-label">结束日期</text><text class="advanced-value">{{dateTo || '不限'}}</text></view><text class="advanced-arrow" aria-hidden="true"></text></view>
+          </picker>
+        </view>
+      </view>
+      <view class="advanced-grid">
+        <view class="advanced-group advanced-select-group">
+          <text class="advanced-label">收支类型</text>
+          <picker range="{{['全部类型','支出','收入']}}" value="{{entryType === 'EXPENSE' ? 1 : entryType === 'INCOME' ? 2 : 0}}" disabled="{{loading}}" bindchange="onType"><view class="advanced-control"><text class="advanced-value">{{entryType === 'INCOME' ? '收入' : entryType === 'EXPENSE' ? '支出' : '全部类型'}}</text><text class="advanced-arrow" aria-hidden="true"></text></view></picker>
+        </view>
+        <view class="advanced-group advanced-select-group">
+          <text class="advanced-label">分类</text>
+          <picker range="{{categories}}" range-key="displayName" disabled="{{loading}}" bindchange="onCategory"><view class="advanced-control"><text class="advanced-value">{{categoryName || '全部分类'}}</text><text class="advanced-arrow" aria-hidden="true"></text></view></picker>
+        </view>
+        <view class="advanced-group advanced-select-group">
+          <text class="advanced-label">资金账户</text>
+          <picker range="{{accounts}}" range-key="displayName" disabled="{{loading}}" bindchange="onAccount"><view class="advanced-control"><text class="advanced-value">{{accountName || '全部账户'}}</text><text class="advanced-arrow" aria-hidden="true"></text></view></picker>
+        </view>
+        <view class="advanced-group advanced-select-group">
+          <text class="advanced-label">创建人</text>
+          <picker wx:if="{{canSelectCreator}}" range="{{creators}}" range-key="displayName" value="{{creatorIndex}}" disabled="{{loading}}" bindchange="onCreator"><view class="advanced-control"><text class="advanced-value">{{creatorName}}</text><text class="advanced-arrow" aria-hidden="true"></text></view></picker>
+          <view wx:else class="advanced-control advanced-readonly"><text class="advanced-value">仅本人账单</text></view>
+        </view>
+      </view>
+      <view class="advanced-group advanced-text-group">
+        <text class="advanced-label">文字搜索</text>
+        <view class="advanced-search-field"><text class="advanced-search-label">人名</text><input placeholder="输入人名，支持部分匹配" aria-label="按人名搜索账单" value="{{personName}}" maxlength="64" confirm-type="search" disabled="{{loading}}" bindinput="onPersonNameSearch" bindconfirm="onApplyFilters"/></view>
+        <view class="advanced-search-field"><text class="advanced-search-label">备注</text><input placeholder="输入备注关键词" aria-label="按备注搜索账单" value="{{keyword}}" maxlength="500" confirm-type="search" disabled="{{loading}}" bindinput="onKeyword" bindconfirm="onApplyFilters"/></view>
+      </view>
+      <view class="actions advanced-actions"><button class="button button-secondary" disabled="{{loading}}" bindtap="onClearFilters">清除筛选</button><button class="button button-primary" disabled="{{loading}}" bindtap="onApplyFilters">应用筛选</button></view>
     </view>
   </view>
   <view class="card" wx:if="{{loadState === 'loading'}}">正在加载账单…</view>

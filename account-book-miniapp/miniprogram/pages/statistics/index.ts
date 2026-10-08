@@ -5,7 +5,7 @@ import { shanghaiToday } from '../../utils/bookkeeping'
 import { pageGuard } from '../../utils/page-guard'
 import { toErrorView } from '../../utils/presentation'
 import type { CreatorOption } from '../../types/entry'
-import { creatorOptions, creatorScopeIdentity } from '../../utils/creator-scope'
+import { defaultCreatorScope, resolveCreatorSelection, creatorScopeIdentity } from '../../utils/creator-scope'
 import { canReuseTabSnapshot, captureTabSnapshot, matchesTabSnapshot, type TabSnapshot } from '../../utils/tab-snapshot'
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
@@ -67,7 +67,7 @@ Page({
   },
 
   data: {
-    canSelectCreator: false, createdBy: 0, creatorName: '全部成员', creators: [] as CreatorOption[],
+    canSelectCreator: false, createdBy: 0, creatorName: '全部成员', creatorIndex: 0, creators: [] as CreatorOption[],
     month: currentMonth(),
     scopeIndex: 0,
     scopeLabels: ['月度', '全部', '自定义'],
@@ -112,7 +112,7 @@ Page({
     this._creatorIdentity = identity
     if (changed) { this._snapshot = null; this._displaySnapshot = null }
     this.setData({ canSelectCreator: session.getUser()?.role === 'OWNER',
-      ...(changed ? { createdBy: 0, creatorName: '全部成员', creators: [], summary: null,
+      ...(changed ? { ...defaultCreatorScope(session), creatorIndex: 0, creators: [], summary: null,
         daily: [], categoryGroups: [], accountItems: [], memberGroups: [],
         dailyPage: 1, dailyTotalDays: 0, dailyTotalPages: 0, dailyHasNext: false, loading: false,
         loadState: 'empty' as LoadState, errorMessage: '', requestId: '' } : {}) })
@@ -133,7 +133,7 @@ Page({
     if (!this.data.canSelectCreator) return
     const selected = this.data.creators[Number(event.detail.value)]
     if (!selected) return
-    this.setData({ createdBy: selected.userId, creatorName: selected.displayName, dailyPage: 1 })
+    this.setData({ createdBy: selected.userId, creatorName: selected.displayName, creatorIndex: Number(event.detail.value), dailyPage: 1 })
     await this.loadAll()
   },
 
@@ -228,9 +228,14 @@ Page({
         this.data.canSelectCreator ? runtime.entries.creators() : Promise.resolve({ items: [] }),
       ])
       if (!current()) return
+      const selection = resolveCreatorSelection(runtime.session, creators.items, this.data.createdBy)
+      if (selection.createdBy !== this.data.createdBy) {
+        this.setData({ ...selection, dailyPage: 1 })
+        await this.loadAll()
+        return
+      }
       this.setData({
-        creators: this.data.canSelectCreator ? creatorOptions(creators.items) : [],
-        creatorName: creators.items.find(item => item.userId === this.data.createdBy)?.displayName || '全部成员',
+        ...selection,
         month: summary.month ?? this.data.month,
         summary,
         daily: daily.items,

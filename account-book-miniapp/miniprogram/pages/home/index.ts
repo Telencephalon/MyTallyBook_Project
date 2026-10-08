@@ -2,7 +2,7 @@ import { getRuntime } from '../../runtime'
 import { APP_INFO } from '../../config/app-info'
 import type { Ledger, UserProfile } from '../../types/api'
 import type { CreatorOption, Entry } from '../../types/entry'
-import { creatorOptions, creatorScopeIdentity } from '../../utils/creator-scope'
+import { defaultCreatorScope, resolveCreatorSelection, creatorScopeIdentity } from '../../utils/creator-scope'
 import { AppError } from '../../types/error'
 import { roleLabel, toErrorView } from '../../utils/presentation'
 import { navigateToPage } from '../../utils/navigation'
@@ -30,7 +30,7 @@ Page({
     currency: '',
     timezone: '',
     maxMembers: null as number | null,
-    canSelectCreator: false, createdBy: 0, creatorName: '全部成员', creators: [] as CreatorOption[],
+    canSelectCreator: false, createdBy: 0, creatorName: '全部成员', creatorIndex: 0, creators: [] as CreatorOption[],
     canManageInvites: false,
     canManageCatalog: false,
     recentLoading: false,
@@ -130,7 +130,7 @@ Page({
     const query = String(this.data.createdBy)
     if (tabReturn && canReuseTabSnapshot(this._recentSnapshot, runtime.session, query)) return
     const preserve = tabReturn && matchesTabSnapshot(this._recentSnapshot, runtime.session, query)
-    const snapshot = captureTabSnapshot(runtime.session, query)
+    let snapshot = captureTabSnapshot(runtime.session, query)
     this._recentSnapshot = null
     const identity = this._creatorIdentity
     const generation = this._generation
@@ -145,16 +145,21 @@ Page({
     }
     this.setData({ recentLoading: true, ...(!preserve ? { recentEntries: [] } : {}), recentError: '', recentRequestId: '' })
     try {
-      const [value, creators] = await Promise.all([
+      const [initialValue, creators] = await Promise.all([
         runtime.entries.list({ page: 1, pageSize: 5, ...(this.data.createdBy ? { createdBy: this.data.createdBy } : {}) }),
         this.data.canSelectCreator ? runtime.entries.creators() : Promise.resolve({ items: [] }),
       ])
-      if (current()) {
-        this._recentSnapshot = snapshot
-        this.setData({ recentEntries: value.items,
-        creatorName: creators.items.find(item => item.userId === this.data.createdBy)?.displayName || '全部成员',
-        creators: this.data.canSelectCreator ? creatorOptions(creators.items) : [], recentError: '', recentRequestId: '' })
+      let value = initialValue
+      if (!current()) return
+      const selection = resolveCreatorSelection(runtime.session, creators.items, this.data.createdBy)
+      if (selection.createdBy !== this.data.createdBy) {
+        this.setData({ ...selection, recentEntries: [] })
+        snapshot = captureTabSnapshot(runtime.session, String(selection.createdBy))
+        value = await runtime.entries.list({ page: 1, pageSize: 5, createdBy: selection.createdBy })
       }
+      if (!current()) return
+      this._recentSnapshot = snapshot
+      this.setData({ ...selection, recentEntries: value.items, recentError: '', recentRequestId: '' })
     } catch (error) {
       if (!current()) return
       const view = toErrorView(error)
@@ -175,7 +180,7 @@ Page({
     this._creatorIdentity = identity
     if (changed) this._recentSnapshot = null
     this.setData({ canSelectCreator: session.getUser()?.role === 'OWNER',
-      ...(changed ? { createdBy: 0, creatorName: '全部成员', creators: [], recentEntries: [], recentLoading: false } : {}) })
+      ...(changed ? { ...defaultCreatorScope(session), creatorIndex: 0, creators: [], recentEntries: [], recentLoading: false } : {}) })
   },
 
   async onCreator(event: WechatMiniprogram.PickerChange) {
@@ -183,7 +188,7 @@ Page({
     if (!this.data.canSelectCreator) return
     const selected = this.data.creators[Number(event.detail.value)]
     if (!selected) return
-    this.setData({ createdBy: selected.userId, creatorName: selected.displayName })
+    this.setData({ createdBy: selected.userId, creatorName: selected.displayName, creatorIndex: Number(event.detail.value) })
     await this.loadRecent()
   },
 
